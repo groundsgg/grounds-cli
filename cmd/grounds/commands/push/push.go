@@ -3,10 +3,13 @@ package push
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
 )
 
@@ -37,4 +40,19 @@ func newPush() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev")
 	return cmd
+}
+
+// defaultDevice mirrors login.go (same issuer, same client ID).
+// Lifted here so subcommands don't depend on the commands package.
+func defaultDevice() *auth.DeviceClient {
+	// Avoid pkg-level constants from sibling pkg; hardcode same values
+	return &auth.DeviceClient{
+		Issuer:   "https://account.grounds.gg/realms/grounds",
+		ClientID: "grounds-cli",
+		HTTP:     defaultHTTP(),
+	}
+}
+
+func defaultHTTP() *http.Client {
+	return &http.Client{Timeout: 30 * time.Second}
 }
