@@ -16,6 +16,7 @@ func main() {
 	root.AddCommand(commands.NewCompletionCommand())
 	root.AddCommand(commands.NewLoginCommand())
 	root.AddCommand(commands.NewLogoutCommand())
+	root.AddCommand(commands.NewDoctorCommand())
 	root.AddCommand(cluster.NewClusterCommand())
 	root.AddCommand(logs.NewLogsCommand())
 	root.AddCommand(push.NewPushCommand())
