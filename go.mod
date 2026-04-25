@@ -5,10 +5,12 @@ go 1.25.0
 require (
 	github.com/fatih/color v1.19.0
 	github.com/jedib0t/go-pretty/v6 v6.7.10
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/r3labs/sse/v2 v2.10.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/zalando/go-keyring v0.2.8
+	gopkg.in/cenkalti/backoff.v1 v1.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -33,5 +35,4 @@ require (
 	golang.org/x/net v0.0.0-20191116160921-f9c825593386 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 )

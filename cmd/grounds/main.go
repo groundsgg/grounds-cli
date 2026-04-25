@@ -11,6 +11,8 @@ func main() {
 	root := commands.NewRootCommand()
 	root.AddCommand(commands.NewVersionCommand())
 	root.AddCommand(commands.NewCompletionCommand())
+	root.AddCommand(commands.NewLoginCommand())
+	root.AddCommand(commands.NewLogoutCommand())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
