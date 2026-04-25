@@ -35,11 +35,12 @@ jobs:
           version: latest
           args: release --clean
         env:
-          # Override GITHUB_TOKEN with a PAT that has contents:write on
-          # grounds-cli + homebrew-tap + scoop-bucket so GoReleaser can
-          # push the formula/manifest to the sibling repos. Falls back
-          # to the default per-repo GITHUB_TOKEN if HOMEBREW_TAP_PAT is
-          # missing — release artefacts still upload, but tap/bucket
-          # publishing fails (acceptable degraded mode for a first
-          # bring-up; reset HOMEBREW_TAP_PAT in repo settings to fix).
-          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT || secrets.GITHUB_TOKEN }}
+          # GITHUB_TOKEN: default per-repo token. Used for the grounds-cli
+          # release itself (artifact upload, release-notes update). Auto-
+          # scoped to grounds-cli only — fine.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # HOMEBREW_TAP_PAT: cross-repo PAT used by the brews + scoops
+          # blocks in .goreleaser.yml to push to the homebrew-tap +
+          # scoop-bucket sibling repos. Configure with contents:write +
+          # pull-requests:write on those two repos.
+          HOMEBREW_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}

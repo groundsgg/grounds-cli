@@ -48,6 +48,9 @@ brews:
   - repository:
       owner: groundsgg
       name: homebrew-tap
+      # Sibling-repo push needs cross-repo write — use the PAT
+      # exposed as HOMEBREW_TAP_PAT in the workflow.
+      token: "{{ .Env.HOMEBREW_TAP_PAT }}"
     name: grounds
     homepage: https://grounds.gg
     description: Grounds Internal Developer Platform CLI
@@ -62,6 +65,7 @@ scoops:
   - repository:
       owner: groundsgg
       name: scoop-bucket
+      token: "{{ .Env.HOMEBREW_TAP_PAT }}"
     homepage: https://grounds.gg
     description: Grounds Internal Developer Platform CLI
     license: Apache-2.0
