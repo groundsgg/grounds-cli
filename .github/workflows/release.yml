@@ -35,9 +35,11 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tap PR PAT — needs contents:write on the tap repos. Set
-          # this in repo settings > Secrets > Actions before the first
-          # release. The implementer will rotate documentation in the
-          # README.
-          GORELEASER_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+          # Override GITHUB_TOKEN with a PAT that has contents:write on
+          # grounds-cli + homebrew-tap + scoop-bucket so GoReleaser can
+          # push the formula/manifest to the sibling repos. Falls back
+          # to the default per-repo GITHUB_TOKEN if HOMEBREW_TAP_PAT is
+          # missing — release artefacts still upload, but tap/bucket
+          # publishing fails (acceptable degraded mode for a first
+          # bring-up; reset HOMEBREW_TAP_PAT in repo settings to fix).
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_PAT || secrets.GITHUB_TOKEN }}
