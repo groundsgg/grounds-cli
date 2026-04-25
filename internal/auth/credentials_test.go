@@ -3,6 +3,7 @@ package auth
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -30,10 +31,12 @@ func TestRoundtrip(t *testing.T) {
 	if loaded.AccessToken != "at" || loaded.RefreshToken != "rt" || loaded.Email != "x@example.com" {
 		t.Errorf("loaded mismatch: %+v", loaded)
 	}
-	// Mode check
-	info, _ := os.Stat(filepath.Join(dir, fileName))
-	if info.Mode().Perm() != 0600 {
-		t.Errorf("perm = %v", info.Mode().Perm())
+	// Mode check (Unix permission bits — Windows reports 0666 regardless of chmod)
+	if runtime.GOOS != "windows" {
+		info, _ := os.Stat(filepath.Join(dir, fileName))
+		if info.Mode().Perm() != 0600 {
+			t.Errorf("perm = %v", info.Mode().Perm())
+		}
 	}
 }
 
