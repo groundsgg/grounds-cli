@@ -4,6 +4,9 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "packages": {
-    ".": { "package-name": "grounds-cli" }
+    ".": {
+      "package-name": "grounds-cli",
+      "release-as": "0.1.0"
+    }
   }
 }
