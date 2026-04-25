@@ -6,6 +6,7 @@ import (
 
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/cluster"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/push"
 )
 
 func main() {
@@ -15,6 +16,7 @@ func main() {
 	root.AddCommand(commands.NewLoginCommand())
 	root.AddCommand(commands.NewLogoutCommand())
 	root.AddCommand(cluster.NewClusterCommand())
+	root.AddCommand(push.NewPushCommand())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
