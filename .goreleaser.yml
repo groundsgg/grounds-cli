@@ -1,0 +1,80 @@
+version: 2
+
+project_name: grounds-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: grounds
+    main: ./cmd/grounds
+    binary: grounds
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X github.com/groundsgg/grounds-cli/internal/version.Version={{.Version}}
+      - -X github.com/groundsgg/grounds-cli/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/groundsgg/grounds-cli/internal/version.BuildAt={{.Date}}
+
+archives:
+  - id: archive
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: "checksums.txt"
+
+nfpms:
+  - id: linux-pkg
+    package_name: grounds
+    vendor: Grounds
+    homepage: https://grounds.gg
+    maintainer: Grounds <ops@grounds.gg>
+    description: Grounds Internal Developer Platform CLI
+    license: Apache-2.0
+    formats: [deb, rpm]
+    bindir: /usr/bin
+
+brews:
+  - repository:
+      owner: groundsgg
+      name: homebrew-tap
+    name: grounds
+    homepage: https://grounds.gg
+    description: Grounds Internal Developer Platform CLI
+    license: Apache-2.0
+    install: |
+      bin.install "grounds"
+      generate_completions_from_executable(bin/"grounds", "completion")
+    test: |
+      assert_match "grounds version", shell_output("#{bin}/grounds version")
+
+scoops:
+  - repository:
+      owner: groundsgg
+      name: scoop-bucket
+    homepage: https://grounds.gg
+    description: Grounds Internal Developer Platform CLI
+    license: Apache-2.0
+
+release:
+  github:
+    owner: groundsgg
+    name: grounds-cli
+
+changelog:
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
