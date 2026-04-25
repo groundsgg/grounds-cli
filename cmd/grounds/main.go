@@ -10,6 +10,7 @@ import (
 func main() {
 	root := commands.NewRootCommand()
 	root.AddCommand(commands.NewVersionCommand())
+	root.AddCommand(commands.NewCompletionCommand())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
