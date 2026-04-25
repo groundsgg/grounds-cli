@@ -6,7 +6,7 @@
   "packages": {
     ".": {
       "package-name": "grounds-cli",
-      "release-as": "0.1.0"
+      "release-as": "0.1.1"
     }
   }
 }
