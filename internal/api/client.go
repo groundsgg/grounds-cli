@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/groundsgg/grounds-cli/internal/auth"
 )
@@ -15,6 +17,20 @@ type Client struct {
 	BaseURL string
 	HTTP    *http.Client
 	Tokens  TokenSource
+	// ProjectID, when set, is appended as `?projectId=...` to every
+	// project-scoped request. Driven by the global `--project` flag /
+	// GROUNDS_PROJECT env var. Empty string → forge falls back to the
+	// caller's default project (their auto-created Personal one).
+	ProjectID string
+}
+
+// WithProject returns a copy of the Client scoped to the given project id.
+// Used by command handlers that resolve --project before each call so the
+// underlying base client can be shared across goroutines.
+func (c *Client) WithProject(id string) *Client {
+	clone := *c
+	clone.ProjectID = id
+	return &clone
 }
 
 // TokenSource produces a fresh bearer token, refreshing on demand. The
@@ -36,7 +52,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, o
 		}
 		rdr = bytes.NewReader(blob)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, rdr)
+	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+c.scopedPath(path), rdr)
 	if err != nil {
 		return err
 	}
@@ -65,6 +81,25 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, o
 		return json.NewDecoder(resp.Body).Decode(out)
 	}
 	return nil
+}
+
+// scopedPath appends `?projectId=...` to the path when the client carries
+// a project id. Idempotent — does nothing when ProjectID is empty (forge
+// falls back to the caller's default project) or when the path already
+// contains a `projectId=` query.
+func (c *Client) scopedPath(path string) string {
+	if c.ProjectID == "" {
+		return path
+	}
+	// already scoped
+	if strings.Contains(path, "projectId=") {
+		return path
+	}
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	return path + sep + "projectId=" + url.QueryEscape(c.ProjectID)
 }
 
 // envTokenSource uses GROUNDS_TOKEN verbatim, no refresh.

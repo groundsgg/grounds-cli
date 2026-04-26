@@ -14,5 +14,6 @@ func NewRootCommand() *cobra.Command {
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "debug logging to stderr")
 	cmd.PersistentFlags().Bool("no-color", false, "disable colour output")
 	cmd.PersistentFlags().String("config", "", "alternative config directory (also GROUNDS_CONFIG_DIR)")
+	cmd.PersistentFlags().String("project", "", "project id to scope this call (also GROUNDS_PROJECT)")
 	return cmd
 }

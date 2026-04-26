@@ -42,6 +42,18 @@ func newPush() *cobra.Command {
 	return cmd
 }
 
+// projectIDFrom resolves the global --project flag, falling back to
+// the GROUNDS_PROJECT env var. Empty string when neither is set —
+// forge then uses the caller's default project.
+func projectIDFrom(cmd *cobra.Command) string {
+	if cmd != nil {
+		if p, _ := cmd.Flags().GetString("project"); p != "" {
+			return p
+		}
+	}
+	return os.Getenv("GROUNDS_PROJECT")
+}
+
 // defaultDevice mirrors login.go (same issuer, same client ID).
 // Lifted here so subcommands don't depend on the commands package.
 func defaultDevice() *auth.DeviceClient {

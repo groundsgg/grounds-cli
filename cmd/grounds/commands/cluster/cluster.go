@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -19,8 +20,9 @@ func NewClusterCommand() *cobra.Command {
 }
 
 // buildClient is the shared helper every cluster subcommand uses to
-// resolve config + auth + API client.
-func buildClient(ctx context.Context) (*api.Client, *config.Config, error) {
+// resolve config + auth + API client. The cobra command is passed in
+// so we can read the global --project flag.
+func buildClient(_ context.Context, cmd *cobra.Command) (*api.Client, *config.Config, error) {
 	cfg, err := config.Load("")
 	if err != nil {
 		return nil, nil, err
@@ -32,7 +34,28 @@ func buildClient(ctx context.Context) (*api.Client, *config.Config, error) {
 			Device: defaultDeviceClient(),
 		}
 	}
-	return api.New(cfg.APIURL, ts), cfg, nil
+	c := api.New(cfg.APIURL, ts)
+	c.ProjectID = resolveProjectID(cmd)
+	return c, cfg, nil
+}
+
+// resolveProjectID picks --project, falling back to the GROUNDS_PROJECT
+// env var. Empty string when neither is set, in which case forge falls
+// back to the caller's default project.
+func resolveProjectID(cmd *cobra.Command) string {
+	if cmd != nil {
+		if p, _ := cmd.Flags().GetString("project"); p != "" {
+			return p
+		}
+	}
+	return envOr("GROUNDS_PROJECT", "")
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 // defaultDeviceClient mirrors login.go (same issuer, same client ID).
