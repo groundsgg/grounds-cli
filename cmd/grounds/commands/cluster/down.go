@@ -15,7 +15,7 @@ func newDown() *cobra.Command {
 		Short: "Pause the workspace immediately",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, _, err := buildClient(ctx)
+			c, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

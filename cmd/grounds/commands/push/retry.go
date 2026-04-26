@@ -31,6 +31,7 @@ func newRetry() *cobra.Command {
 				ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
 			}
 			c := api.New(cfg.APIURL, ts)
+			c.ProjectID = projectIDFrom(cmd)
 			p, err := c.RetryPush(ctx, args[0])
 			if err != nil {
 				return err

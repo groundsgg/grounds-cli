@@ -29,6 +29,7 @@ func newList() *cobra.Command {
 				ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
 			}
 			c := api.New(cfg.APIURL, ts)
+			c.ProjectID = projectIDFrom(cmd)
 			list, err := c.ListPushes(ctx, mine, limit)
 			if err != nil {
 				return err

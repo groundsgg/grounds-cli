@@ -57,7 +57,7 @@ type ClusterDeleteResult struct {
 
 func (c *Client) ClusterDelete(ctx context.Context, namespace string) (*ClusterDeleteResult, error) {
 	// We can't reuse doRequest because we need a custom header. Inline.
-	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+"/v1/cluster", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+c.scopedPath("/v1/cluster"), nil)
 	if err != nil {
 		return nil, err
 	}
