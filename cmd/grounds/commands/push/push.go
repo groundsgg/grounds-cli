@@ -22,9 +22,18 @@ func NewPushCommand() *cobra.Command {
 func newPush() *cobra.Command {
 	var target string
 	cmd := &cobra.Command{
-		Use:   "push [--target=dev]",
+		Use:   "push [--target=dev|staging]",
 		Short: "Build via Gradle plugin and deploy to a target",
+		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
+
+Targets:
+  dev     — long-lived, lands in your personal namespace (user-<handle>).
+  staging — ephemeral preview env, fresh namespace per push, auto-deleted after 7 days.
+            Public URL pattern: <name>-pr<id>.dev.grnds.io.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			if target != "dev" && target != "staging" {
+				return fmt.Errorf("invalid --target %q: must be \"dev\" or \"staging\"", target)
+			}
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
@@ -38,7 +47,7 @@ func newPush() *cobra.Command {
 			return gradle.Run(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 		},
 	}
-	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev")
+	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev (persistent personal ns) or staging (ephemeral preview env, 7d TTL)")
 	return cmd
 }
 
