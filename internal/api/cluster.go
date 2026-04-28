@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -32,9 +33,17 @@ func (c *Client) GetCluster(ctx context.Context) (*ClusterStatus, error) {
 	return out, nil
 }
 
-func (c *Client) ClusterUp(ctx context.Context) (*ClusterStatus, error) {
+// ClusterUp spawns or resumes the workspace. `profile` may be empty
+// (forge picks the default), "minigame", or "platform". Forge enforces
+// the immutable-profile rule: switching profiles on an existing
+// workspace requires `grounds cluster delete` first.
+func (c *Client) ClusterUp(ctx context.Context, profile string) (*ClusterStatus, error) {
+	path := "/v1/cluster/up"
+	if profile != "" {
+		path += "?profile=" + url.QueryEscape(profile)
+	}
 	out := &ClusterStatus{}
-	if err := c.doRequest(ctx, http.MethodPost, "/v1/cluster/up", nil, out); err != nil {
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, out); err != nil {
 		return nil, err
 	}
 	return out, nil
