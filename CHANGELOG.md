@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.4](https://github.com/groundsgg/grounds-cli/compare/v0.1.3...v0.1.4) (2026-04-28)
+
+
+### Bug Fixes
+
+* **config:** default APIURL to platform.grnds.io (forge subdomain doesn't exist) ([#10](https://github.com/groundsgg/grounds-cli/issues/10)) ([d813b0a](https://github.com/groundsgg/grounds-cli/commit/d813b0a1d2450444836e7bcb80f1d65a4d63a22c))
+
 ## [0.1.3](https://github.com/groundsgg/grounds-cli/compare/v0.1.2...v0.1.3) (2026-04-28)
 
 
