@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/groundsgg/grounds-cli/compare/v0.1.5...v0.1.6) (2026-04-28)
+
+
+### Features
+
+* **cli:** add --profile flag to grounds cluster up ([#14](https://github.com/groundsgg/grounds-cli/issues/14)) ([fa5159d](https://github.com/groundsgg/grounds-cli/commit/fa5159ddeb01332fcccfaa937beda565ebe3517f))
+
 ## [0.1.5](https://github.com/groundsgg/grounds-cli/compare/v0.1.4...v0.1.5) (2026-04-28)
 
 
