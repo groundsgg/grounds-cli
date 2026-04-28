@@ -78,10 +78,34 @@ func checkAuth(ctx context.Context) checkResult {
 	if err != nil {
 		return checkResult{name: "auth", ok: false, msg: "not logged in"}
 	}
-	if time.Now().After(c.ExpiresAt) {
-		return checkResult{name: "auth", ok: false, msg: "token expired (run 'grounds login')"}
+	// The access_token Keycloak issues is short-lived (≈5 min by default)
+	// but the refresh_token lives much longer (≈30 d). Real commands go
+	// through FileTokenSource.Token which transparently refreshes; doctor
+	// must do the same or it reports "expired" while everything else
+	// works fine. Drop down to refresh + persist if needed.
+	if time.Now().After(c.ExpiresAt.Add(-30 * time.Second)) {
+		if time.Now().After(c.RefreshExpiresAt) {
+			return checkResult{name: "auth", ok: false, msg: "session expired (run 'grounds login')"}
+		}
+		device := &auth.DeviceClient{
+			Issuer:   defaultIssuer,
+			ClientID: defaultClientID,
+			HTTP:     defaultHTTP(),
+		}
+		fresh, err := device.Refresh(ctx, c.RefreshToken)
+		if err != nil {
+			return checkResult{name: "auth", ok: false, msg: "refresh failed: " + err.Error() + " (run 'grounds login')"}
+		}
+		c.AccessToken = fresh.AccessToken
+		c.RefreshToken = fresh.RefreshToken
+		c.ExpiresAt = time.Now().Add(time.Duration(fresh.ExpiresIn) * time.Second)
+		c.RefreshExpiresAt = time.Now().Add(time.Duration(fresh.RefreshExpiresIn) * time.Second)
+		if err := store.Save(c); err != nil {
+			return checkResult{name: "auth", ok: false, msg: "refresh ok but persist failed: " + err.Error()}
+		}
+		return checkResult{name: "auth", ok: true, msg: c.PreferredUser + " (refreshed; valid " + time.Until(c.ExpiresAt).Round(time.Minute).String() + ")"}
 	}
-	return checkResult{name: "auth", ok: true, msg: c.PreferredUser + " (token valid for " + time.Until(c.ExpiresAt).Round(time.Minute).String() + ")"}
+	return checkResult{name: "auth", ok: true, msg: c.PreferredUser + " (valid " + time.Until(c.ExpiresAt).Round(time.Minute).String() + ", refresh in " + time.Until(c.RefreshExpiresAt).Round(time.Hour).String() + ")"}
 }
 
 func checkAPI(ctx context.Context) checkResult {
