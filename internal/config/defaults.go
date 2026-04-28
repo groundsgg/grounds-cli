@@ -1,7 +1,7 @@
 package config
 
 const (
-	DefaultAPIURL  = "https://forge.grnds.io"
+	DefaultAPIURL  = "https://platform.grnds.io"
 	DefaultTarget  = "dev"
 	DefaultOutput  = "table"
 	DefaultColor   = "auto"
