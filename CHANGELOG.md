@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/groundsgg/grounds-cli/compare/v0.1.1...v0.1.2) (2026-04-28)
+
+
+### Features
+
+* **cli:** T8 — global --project flag ([#4](https://github.com/groundsgg/grounds-cli/issues/4)) ([dfd42ad](https://github.com/groundsgg/grounds-cli/commit/dfd42ad85497ccdb5fc60494c0eb81455e52be82))
+* **preview:** grounds preview list/show/pin/unpin subcommands ([#7](https://github.com/groundsgg/grounds-cli/issues/7)) ([af9e31b](https://github.com/groundsgg/grounds-cli/commit/af9e31bca10e32ba36500dc8b6af415ca7ba5f12))
+* **push:** support --target=staging for preview envs ([#6](https://github.com/groundsgg/grounds-cli/issues/6)) ([224cded](https://github.com/groundsgg/grounds-cli/commit/224cded7c2991418e4504a9c5900ca1906dc7cf1))
+
 ## [0.1.1](https://github.com/groundsgg/grounds-cli/compare/v0.1.0...v0.1.1) (2026-04-25)
 
 
