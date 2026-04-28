@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/groundsgg/grounds-cli/compare/v0.1.2...v0.1.3) (2026-04-28)
+
+
+### Bug Fixes
+
+* **auth:** add PKCE to device flow (Keycloak now enforces) ([#8](https://github.com/groundsgg/grounds-cli/issues/8)) ([cae6df9](https://github.com/groundsgg/grounds-cli/commit/cae6df9ec7682fc89de7d06d74bb21e9e517d190))
+
 ## [0.1.2](https://github.com/groundsgg/grounds-cli/compare/v0.1.1...v0.1.2) (2026-04-28)
 
 
