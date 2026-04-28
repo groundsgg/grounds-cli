@@ -45,7 +45,7 @@ func NewLoginCommand() *cobra.Command {
 			fmt.Fprintln(cmd.OutOrStdout(), "  Verification code:", dc.UserCode)
 			_ = browser.OpenURL(dc.VerificationURIComplete)
 
-			tok, err := device.PollToken(ctx, dc.DeviceCode, dc.Interval, dc.ExpiresIn)
+			tok, err := device.PollToken(ctx, dc.DeviceCode, dc.CodeVerifier, dc.Interval, dc.ExpiresIn)
 			if err != nil {
 				return err
 			}

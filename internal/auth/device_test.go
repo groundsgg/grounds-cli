@@ -11,10 +11,14 @@ import (
 )
 
 func TestStartDevice(t *testing.T) {
+	var gotChallenge, gotMethod string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, "/auth/device") {
 			t.Fatalf("path = %s", r.URL.Path)
 		}
+		r.ParseForm()
+		gotChallenge = r.Form.Get("code_challenge")
+		gotMethod = r.Form.Get("code_challenge_method")
 		json.NewEncoder(w).Encode(DeviceCodeResponse{
 			DeviceCode:              "dc",
 			UserCode:                "ABCD-EFGH",
@@ -33,12 +37,26 @@ func TestStartDevice(t *testing.T) {
 	if res.UserCode != "ABCD-EFGH" {
 		t.Errorf("UserCode = %q", res.UserCode)
 	}
+	// PKCE — Keycloak's device endpoint requires this since recent
+	// versions; without it the request fails 400 invalid_request.
+	if gotMethod != "S256" {
+		t.Errorf("code_challenge_method = %q, want S256", gotMethod)
+	}
+	if gotChallenge == "" {
+		t.Error("code_challenge missing on /auth/device request")
+	}
+	if res.CodeVerifier == "" {
+		t.Error("CodeVerifier should be populated for PollToken")
+	}
 }
 
 func TestPollToken_Success(t *testing.T) {
 	call := 0
+	var gotVerifier string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		call++
+		r.ParseForm()
+		gotVerifier = r.Form.Get("code_verifier")
 		if call == 1 {
 			// First poll: authorization_pending
 			w.WriteHeader(http.StatusBadRequest)
@@ -51,12 +69,15 @@ func TestPollToken_Success(t *testing.T) {
 	c := &DeviceClient{Issuer: srv.URL, ClientID: "grounds-cli", HTTP: srv.Client()}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	tok, err := c.PollToken(ctx, "dc", 1, 60)
+	tok, err := c.PollToken(ctx, "dc", "verifier-123", 1, 60)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if tok.AccessToken != "at" {
 		t.Errorf("AccessToken = %q", tok.AccessToken)
+	}
+	if gotVerifier != "verifier-123" {
+		t.Errorf("code_verifier = %q, want verifier-123", gotVerifier)
 	}
 }
 
