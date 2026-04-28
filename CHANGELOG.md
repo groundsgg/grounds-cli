@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/groundsgg/grounds-cli/compare/v0.1.4...v0.1.5) (2026-04-28)
+
+
+### Bug Fixes
+
+* **doctor:** refresh expired access tokens instead of reporting failure ([#12](https://github.com/groundsgg/grounds-cli/issues/12)) ([96e969b](https://github.com/groundsgg/grounds-cli/commit/96e969b1192b49820fc9114bb39685de1768e5b9))
+
 ## [0.1.4](https://github.com/groundsgg/grounds-cli/compare/v0.1.3...v0.1.4) (2026-04-28)
 
 
