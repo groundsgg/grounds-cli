@@ -7,6 +7,7 @@ import (
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/cluster"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/logs"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/preview"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/push"
 )
 
@@ -21,6 +22,7 @@ func main() {
 	root.AddCommand(cluster.NewClusterCommand())
 	root.AddCommand(logs.NewLogsCommand())
 	root.AddCommand(push.NewPushCommand())
+	root.AddCommand(preview.NewPreviewCommand())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
