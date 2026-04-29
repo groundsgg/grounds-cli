@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.7](https://github.com/groundsgg/grounds-cli/compare/v0.1.6...v0.1.7) (2026-04-29)
+
+
+### Bug Fixes
+
+* **auth:** write version field in credentials.json for grounds-push compat ([#16](https://github.com/groundsgg/grounds-cli/issues/16)) ([78839a1](https://github.com/groundsgg/grounds-cli/commit/78839a16f072a49a102b40263e97c13fd701a80a))
+* **push:** pre-refresh access token before invoking Gradle plugin ([#18](https://github.com/groundsgg/grounds-cli/issues/18)) ([109da76](https://github.com/groundsgg/grounds-cli/commit/109da769af0dddf87ca4771cfaab54a031fbd28e))
+
 ## [0.1.6](https://github.com/groundsgg/grounds-cli/compare/v0.1.5...v0.1.6) (2026-04-28)
 
 
