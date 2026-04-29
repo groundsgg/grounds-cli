@@ -28,7 +28,7 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: "checksums.txt"
@@ -44,7 +44,7 @@ nfpms:
     formats: [deb, rpm]
     bindir: /usr/bin
 
-brews:
+homebrew_casks:
   - repository:
       owner: groundsgg
       name: homebrew-tap
@@ -52,14 +52,16 @@ brews:
       # exposed as HOMEBREW_TAP_PAT in the workflow.
       token: "{{ .Env.HOMEBREW_TAP_PAT }}"
     name: grounds
+    binaries:
+      - grounds
     homepage: https://grounds.gg
     description: Grounds Internal Developer Platform CLI
     license: Apache-2.0
-    install: |
-      bin.install "grounds"
-      generate_completions_from_executable(bin/"grounds", "completion")
-    test: |
-      assert_match "grounds version", shell_output("#{bin}/grounds version")
+    generate_completions_from_executable:
+      executable: "bin/grounds"
+      args:
+        - completion
+      shell_parameter_format: cobra
 
 scoops:
   - repository:

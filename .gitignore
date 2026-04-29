@@ -6,3 +6,6 @@
 *.swp
 .env
 .env.*
+
+# Codex
+.codex
