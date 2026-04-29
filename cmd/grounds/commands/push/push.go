@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/groundsgg/grounds-cli/internal/auth"
+	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
 )
 
@@ -43,6 +44,27 @@ Targets:
 				return fmt.Errorf("%w\n  → not a Gradle project? Run 'grounds init' to scaffold, or cd to your project root", err)
 			}
 			ctx := context.Background()
+
+			// Pre-refresh: the Gradle plugin reads credentials.json
+			// directly via CredentialResolver and rejects expired
+			// access tokens (Keycloak default lifetime is ~5min).
+			// Force a refresh here so the file is fresh before
+			// Gradle reads it. Skip when GROUNDS_TOKEN is set —
+			// the plugin uses the env var directly, no file involved.
+			if os.Getenv("GROUNDS_TOKEN") == "" {
+				cfg, err := config.Load("")
+				if err != nil {
+					return err
+				}
+				src := &auth.FileTokenSource{
+					Store:  auth.NewStore(cfg.Dir),
+					Device: defaultDevice(),
+				}
+				if _, err := src.Token(ctx); err != nil {
+					return fmt.Errorf("auth refresh failed: %w\n  → run 'grounds login' to re-authenticate", err)
+				}
+			}
+
 			args := []string{"groundsPush", "--target=" + target}
 			return gradle.Run(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 		},
