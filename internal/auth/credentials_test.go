@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -45,5 +47,39 @@ func TestLoadMissing(t *testing.T) {
 	_, err := s.loadFile()
 	if err == nil {
 		t.Errorf("expected error on missing file")
+	}
+}
+
+// TestMarshalAlwaysWritesVersion verifies the cross-repo schema contract
+// with grounds-push's CredentialResolver (which requires version: 1).
+func TestMarshalAlwaysWritesVersion(t *testing.T) {
+	c := &Credentials{AccessToken: "at"}
+	blob, err := c.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(blob), `"version": 1`) {
+		t.Errorf("missing version field in output: %s", blob)
+	}
+
+	var roundtrip Credentials
+	if err := json.Unmarshal(blob, &roundtrip); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if roundtrip.Version != CredentialsVersion {
+		t.Errorf("version = %d, want %d", roundtrip.Version, CredentialsVersion)
+	}
+}
+
+// TestParseLegacyFileWithoutVersion verifies that pre-version files
+// written by an older CLI parse cleanly and get upgraded on next save.
+func TestParseLegacyFileWithoutVersion(t *testing.T) {
+	legacy := []byte(`{"accessToken":"at","refreshToken":"rt"}`)
+	c, err := ParseCredentials(legacy)
+	if err != nil {
+		t.Fatalf("ParseCredentials: %v", err)
+	}
+	if c.Version != CredentialsVersion {
+		t.Errorf("legacy file should be upgraded to v%d, got v%d", CredentialsVersion, c.Version)
 	}
 }
