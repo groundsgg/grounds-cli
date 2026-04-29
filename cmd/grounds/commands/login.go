@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 
 	"github.com/groundsgg/grounds-cli/internal/auth"
+	"github.com/groundsgg/grounds-cli/internal/browser"
 	"github.com/groundsgg/grounds-cli/internal/config"
 )
 
