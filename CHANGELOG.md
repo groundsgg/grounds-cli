@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.9](https://github.com/groundsgg/grounds-cli/compare/v0.1.8...v0.1.9) (2026-04-30)
+
+
+### Features
+
+* **auth:** request offline_access scope in device flow ([#21](https://github.com/groundsgg/grounds-cli/issues/21)) ([304931b](https://github.com/groundsgg/grounds-cli/commit/304931b0525798c4e7cab344788871ddde4acc9a))
+
+
+### Bug Fixes
+
+* **release:** drop unsupported version_prefix; expose release-please version output ([cf4702e](https://github.com/groundsgg/grounds-cli/commit/cf4702e4aefdf17958f7cab44175127b10d4b8bd))
+
 ## [0.1.8](https://github.com/groundsgg/grounds-cli/compare/v0.1.7...v0.1.8) (2026-04-30)
 
 
