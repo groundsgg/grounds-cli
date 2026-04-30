@@ -51,8 +51,13 @@ func (d *DeviceClient) StartDevice(ctx context.Context) (*DeviceCodeResponse, er
 		return nil, fmt.Errorf("pkce: %w", err)
 	}
 	body := url.Values{
-		"client_id":             {d.ClientID},
-		"scope":                 {"openid profile email"},
+		"client_id": {d.ClientID},
+		// `offline_access` upgrades the refresh_token to an "offline
+		// token" with a 30-day default TTL, decoupled from the SSO
+		// session-idle window (Keycloak default 30 minutes). Without
+		// it a user who runs `grounds login` once in the morning
+		// would have to re-authenticate after lunch.
+		"scope":                 {"openid profile email offline_access"},
 		"code_challenge":        {challenge},
 		"code_challenge_method": {"S256"},
 	}
