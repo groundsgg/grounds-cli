@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.8](https://github.com/groundsgg/grounds-cli/compare/v0.1.7...v0.1.8) (2026-04-30)
+
+
+### Features
+
+* **observability:** wire Sentry/GlitchTip error tracking ([cb9c0eb](https://github.com/groundsgg/grounds-cli/commit/cb9c0eb05d1ef3bf661a1e3842360a5513672c40))
+
+
+### Bug Fixes
+
+* avoid powershell browser opener on wsl ([#19](https://github.com/groundsgg/grounds-cli/issues/19)) ([93bc212](https://github.com/groundsgg/grounds-cli/commit/93bc212bdc5093b7353ccbe13f039b92431c93db))
+
 ## [0.1.7](https://github.com/groundsgg/grounds-cli/compare/v0.1.6...v0.1.7) (2026-04-29)
 
 
