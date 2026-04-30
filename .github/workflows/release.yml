@@ -44,3 +44,36 @@ jobs:
           # scoop-bucket sibling repos. Configure with contents:write +
           # pull-requests:write on those two repos.
           HOMEBREW_TAP_PAT: ${{ secrets.HOMEBREW_TAP_PAT }}
+
+  glitchtip-release:
+    # Mark the new release in GlitchTip so the Issues view groups
+    # crashes by `release` (the Sentry release tag the CLI sets via
+    # ldflags equals the goreleaser .Version, which equals
+    # release-please's tag minus the leading `v`). Also associates
+    # the commits in this release so the GlitchTip "Suspect commits"
+    # heuristic has data to work with.
+    #
+    # SENTRY_AUTH_TOKEN secret: created in glitch.grounds.gg ➜
+    # Account ➜ API Tokens with `org:read` + `project:releases`
+    # scopes. Add to repo secrets as SENTRY_AUTH_TOKEN.
+    needs: [release-please, goreleaser]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: grounds
+          SENTRY_PROJECT: cli
+          SENTRY_URL: https://glitch.grounds.gg/
+        with:
+          environment: production
+          # release-please tag_name is e.g. `v0.1.7`; sentry-go's
+          # Release field is set from internal/version.Version which
+          # ldflags-baked equals goreleaser's .Version (no `v`). Strip
+          # the prefix here so the marker matches what the binary
+          # reports at runtime.
+          version: ${{ needs.release-please.outputs.tag_name }}
+          version_prefix: v

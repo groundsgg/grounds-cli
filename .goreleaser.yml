@@ -22,6 +22,9 @@ builds:
       - -X github.com/groundsgg/grounds-cli/internal/version.Version={{.Version}}
       - -X github.com/groundsgg/grounds-cli/internal/version.Commit={{.ShortCommit}}
       - -X github.com/groundsgg/grounds-cli/internal/version.BuildAt={{.Date}}
+      # GlitchTip DSN — public-key only, safe to embed (Sentry's
+      # documented model: DSNs ship in client bundles).
+      - -X github.com/groundsgg/grounds-cli/internal/observability.DSN=https://ea5b2e86-1c42-4a4c-a227-35c8d7652e2e@glitch.grounds.gg/1
 
 archives:
   - id: archive
