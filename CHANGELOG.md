@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.10](https://github.com/groundsgg/grounds-cli/compare/v0.1.9...v0.1.10) (2026-04-30)
+
+
+### Bug Fixes
+
+* **release:** drop `environment` — GlitchTip lacks Sentry deploys API ([c3728cf](https://github.com/groundsgg/grounds-cli/commit/c3728cf98937a4528cf9090fe784d96e54093f5c))
+
 ## [0.1.9](https://github.com/groundsgg/grounds-cli/compare/v0.1.8...v0.1.9) (2026-04-30)
 
 
