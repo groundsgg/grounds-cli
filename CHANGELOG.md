@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.11](https://github.com/groundsgg/grounds-cli/compare/v0.1.10...v0.1.11) (2026-04-30)
+
+
+### Bug Fixes
+
+* **release:** publish Homebrew formula instead of cask ([#24](https://github.com/groundsgg/grounds-cli/issues/24)) ([03fd213](https://github.com/groundsgg/grounds-cli/commit/03fd213f604001bfc32d033f9dc16d82ad6e6b1d))
+
 ## [0.1.10](https://github.com/groundsgg/grounds-cli/compare/v0.1.9...v0.1.10) (2026-04-30)
 
 
