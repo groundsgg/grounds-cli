@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release-please:
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -25,7 +25,7 @@ jobs:
   goreleaser:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
@@ -59,7 +59,7 @@ jobs:
     # scopes. Add to repo secrets as SENTRY_AUTH_TOKEN.
     needs: [release-please, goreleaser]
     if: ${{ needs.release-please.outputs.release_created }}
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
