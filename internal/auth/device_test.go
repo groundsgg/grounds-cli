@@ -11,7 +11,7 @@ import (
 )
 
 func TestStartDevice(t *testing.T) {
-	var gotChallenge, gotMethod string
+	var gotChallenge, gotMethod, gotScope string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !strings.HasSuffix(r.URL.Path, "/auth/device") {
 			t.Fatalf("path = %s", r.URL.Path)
@@ -19,6 +19,7 @@ func TestStartDevice(t *testing.T) {
 		r.ParseForm()
 		gotChallenge = r.Form.Get("code_challenge")
 		gotMethod = r.Form.Get("code_challenge_method")
+		gotScope = r.Form.Get("scope")
 		json.NewEncoder(w).Encode(DeviceCodeResponse{
 			DeviceCode:              "dc",
 			UserCode:                "ABCD-EFGH",
@@ -47,6 +48,12 @@ func TestStartDevice(t *testing.T) {
 	}
 	if res.CodeVerifier == "" {
 		t.Error("CodeVerifier should be populated for PollToken")
+	}
+	// offline_access keeps the refresh token alive past the SSO
+	// session-idle window so the CLI doesn't ask for a re-login
+	// after a few minutes of inactivity.
+	if !strings.Contains(gotScope, "offline_access") {
+		t.Errorf("scope = %q, want it to contain offline_access", gotScope)
 	}
 }
 
