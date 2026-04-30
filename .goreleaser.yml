@@ -47,7 +47,7 @@ nfpms:
     formats: [deb, rpm]
     bindir: /usr/bin
 
-homebrew_casks:
+brews:
   - repository:
       owner: groundsgg
       name: homebrew-tap
@@ -55,16 +55,15 @@ homebrew_casks:
       # exposed as HOMEBREW_TAP_PAT in the workflow.
       token: "{{ .Env.HOMEBREW_TAP_PAT }}"
     name: grounds
-    binaries:
-      - grounds
     homepage: https://grounds.gg
     description: Grounds Internal Developer Platform CLI
     license: Apache-2.0
-    generate_completions_from_executable:
-      executable: "bin/grounds"
-      args:
-        - completion
-      shell_parameter_format: cobra
+    # Cask was the old setup; goreleaser wrote 0.1.10+ into Casks/
+    # while the top-level Formula (where `brew install grounds/tap/grounds`
+    # looks) stuck at 0.1.7. Formula is the conventional shape for a
+    # CLI binary and lets users keep the formula install path.
+    test: |
+      assert_match "grounds version", shell_output("#{bin}/grounds version")
 
 scoops:
   - repository:
