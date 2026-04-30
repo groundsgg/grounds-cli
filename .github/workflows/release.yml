@@ -70,9 +70,7 @@ jobs:
           SENTRY_PROJECT: cli
           SENTRY_URL: https://glitch.grounds.gg/
         with:
-          environment: production
-          # release-please's `version` output is the bare semver
-          # (e.g. 0.1.8); the binary's runtime release tag also has
-          # no `v` prefix. Use `version` not `tag_name` so the
-          # GlitchTip marker matches what the SDK reports at runtime.
+          # GlitchTip doesn't implement Sentry's `releases deploys`
+          # API; skip the `environment` input that triggers it. The
+          # release-marker + commit-association still happen.
           version: ${{ needs.release-please.outputs.version }}
