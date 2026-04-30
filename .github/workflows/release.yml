@@ -14,6 +14,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
@@ -70,10 +71,8 @@ jobs:
           SENTRY_URL: https://glitch.grounds.gg/
         with:
           environment: production
-          # release-please tag_name is e.g. `v0.1.7`; sentry-go's
-          # Release field is set from internal/version.Version which
-          # ldflags-baked equals goreleaser's .Version (no `v`). Strip
-          # the prefix here so the marker matches what the binary
-          # reports at runtime.
-          version: ${{ needs.release-please.outputs.tag_name }}
-          version_prefix: v
+          # release-please's `version` output is the bare semver
+          # (e.g. 0.1.8); the binary's runtime release tag also has
+          # no `v` prefix. Use `version` not `tag_name` so the
+          # GlitchTip marker matches what the SDK reports at runtime.
+          version: ${{ needs.release-please.outputs.version }}
