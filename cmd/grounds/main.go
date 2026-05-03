@@ -6,6 +6,7 @@ import (
 
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/cluster"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/devspace"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/logs"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/preview"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/push"
@@ -30,6 +31,7 @@ func main() {
 	root.AddCommand(commands.NewDoctorCommand())
 	root.AddCommand(commands.NewInitCommand())
 	root.AddCommand(cluster.NewClusterCommand())
+	root.AddCommand(devspace.NewDevspaceCommand())
 	root.AddCommand(logs.NewLogsCommand())
 	root.AddCommand(push.NewPushCommand())
 	root.AddCommand(preview.NewPreviewCommand())
