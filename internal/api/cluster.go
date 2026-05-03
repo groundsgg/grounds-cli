@@ -64,6 +64,44 @@ type ClusterDeleteResult struct {
 	Poll  string `json:"poll,omitempty"`
 }
 
+// BundleUpRequest is the body shape forge expects on POST /v1/cluster/bundle.
+// `Overrides` is intentionally a free-form map: forge validates the
+// per-component union (image | gradle-local | enabled:false) — the CLI
+// just passes through whatever YAML the engineer wrote.
+type BundleUpRequest struct {
+	Bundle    string                 `json:"bundle"`
+	Overrides map[string]any         `json:"overrides,omitempty"`
+}
+
+// BundleUpResult mirrors the success body of POST /v1/cluster/bundle.
+type BundleUpResult struct {
+	State         string `json:"state"`
+	DevClusterID  string `json:"devClusterId"`
+	Namespace     string `json:"namespace"`
+	Created       bool   `json:"created"`
+	BundleVersion string `json:"bundleVersion"`
+	Components    struct {
+		Resolved  int      `json:"resolved"`
+		Succeeded []string `json:"succeeded"`
+		Failed    []struct {
+			Name  string `json:"name"`
+			Error string `json:"error"`
+		} `json:"failed"`
+	} `json:"components"`
+}
+
+// ClusterUpBundle drives a `platform-bundle` profile DevCluster: forge
+// resolves the bundle ref, applies the engineer's overrides, and
+// best-effort helm-installs each component into the vCluster. The
+// breakdown of succeeded/failed components is in the result.
+func (c *Client) ClusterUpBundle(ctx context.Context, body *BundleUpRequest) (*BundleUpResult, error) {
+	out := &BundleUpResult{}
+	if err := c.doRequest(ctx, http.MethodPost, "/v1/cluster/bundle", body, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *Client) ClusterDelete(ctx context.Context, namespace string) (*ClusterDeleteResult, error) {
 	// We can't reuse doRequest because we need a custom header. Inline.
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+c.scopedPath("/v1/cluster"), nil)
