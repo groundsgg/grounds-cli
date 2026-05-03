@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/bundle"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/cluster"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/devspace"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/logs"
@@ -30,6 +31,7 @@ func main() {
 	root.AddCommand(commands.NewLogoutCommand())
 	root.AddCommand(commands.NewDoctorCommand())
 	root.AddCommand(commands.NewInitCommand())
+	root.AddCommand(bundle.NewBundleCommand())
 	root.AddCommand(cluster.NewClusterCommand())
 	root.AddCommand(devspace.NewDevspaceCommand())
 	root.AddCommand(logs.NewLogsCommand())
