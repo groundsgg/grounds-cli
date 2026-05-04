@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.13](https://github.com/groundsgg/grounds-cli/compare/v0.1.12...v0.1.13) (2026-05-04)
+
+
+### Features
+
+* implement update checking ([#33](https://github.com/groundsgg/grounds-cli/issues/33)) ([0c8367d](https://github.com/groundsgg/grounds-cli/commit/0c8367dd51aa6553a2c217b2931f61fc27e49e77))
+* improve CLI UX consistency ([#36](https://github.com/groundsgg/grounds-cli/issues/36)) ([45a0855](https://github.com/groundsgg/grounds-cli/commit/45a0855fb5881b32865dc51a3e4c66bb88993aaa))
+
+
+### Bug Fixes
+
+* update github actions deps ([#35](https://github.com/groundsgg/grounds-cli/issues/35)) ([a646fa9](https://github.com/groundsgg/grounds-cli/commit/a646fa99b60ec749d53e48b86a12babcb7ebc2d4))
+
 ## [0.1.12](https://github.com/groundsgg/grounds-cli/compare/v0.1.11...v0.1.12) (2026-05-04)
 
 
