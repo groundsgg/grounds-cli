@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -23,7 +22,8 @@ func newStatus() *cobra.Command {
 			s, err := c.GetCluster(ctx)
 			if err != nil {
 				if apiErr, ok := err.(*api.Error); ok && apiErr.StatusCode == 404 {
-					fmt.Fprintln(cmd.OutOrStdout(), "→ no workspace yet. Run 'grounds push' to create one.")
+					render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Workspace", "No workspace found")
+					render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Run "+render.Command("grounds push")+" to create one.")
 					return nil
 				}
 				return err

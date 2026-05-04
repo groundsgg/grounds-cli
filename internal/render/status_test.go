@@ -34,16 +34,19 @@ func TestStatus_PausedShowsWarning(t *testing.T) {
 	buf := &bytes.Buffer{}
 	in := time.Now().Add(48 * time.Hour)
 	Status(buf, &api.ClusterStatus{
-		Namespace:     "user-x",
-		State:         "paused",
-		Profile:       "minigame",
-		AutoDeleteAt:  &in,
+		Namespace:    "user-x",
+		State:        "paused",
+		Profile:      "minigame",
+		AutoDeleteAt: &in,
 	})
 	out := buf.String()
 	if !strings.Contains(out, "auto-delete at") {
 		t.Errorf("no auto-delete row\n%s", out)
 	}
-	if !strings.Contains(out, "paused. Next push") {
+	if !strings.Contains(out, "Workspace - Paused") {
 		t.Errorf("no warning line\n%s", out)
+	}
+	if !strings.Contains(out, "Next push or `grounds cluster up` resumes it.") {
+		t.Errorf("no warning detail\n%s", out)
 	}
 }

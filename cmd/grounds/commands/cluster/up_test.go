@@ -1,9 +1,14 @@
 package cluster
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/fatih/color"
+
+	"github.com/groundsgg/grounds-cli/internal/api"
 )
 
 func TestLoadBundleRequest(t *testing.T) {
@@ -88,4 +93,31 @@ func writeTempYAML(t *testing.T, content string) string {
 		t.Fatalf("write temp yaml: %v", err)
 	}
 	return path
+}
+
+func TestRenderBundleResult(t *testing.T) {
+	color.NoColor = true
+	defer func() { color.NoColor = false }()
+
+	res := &api.BundleUpResult{
+		State:         "active",
+		BundleVersion: "0.4.0",
+		Namespace:     "dev-lukas",
+	}
+	res.Components.Resolved = 2
+	res.Components.Succeeded = []string{"api"}
+	res.Components.Failed = append(res.Components.Failed, struct {
+		Name  string `json:"name"`
+		Error string `json:"error"`
+	}{Name: "worker", Error: "image pull failed"})
+
+	var buf bytes.Buffer
+	renderBundleResult(&buf, res)
+
+	want := "[!] Workspace - active with bundle 0.4.0 in namespace dev-lukas\n" +
+		"    ! Components: 2 resolved, 1 succeeded, 1 failed\n" +
+		"    ✗ worker: image pull failed\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("renderBundleResult output = %q, want %q", got, want)
+	}
 }

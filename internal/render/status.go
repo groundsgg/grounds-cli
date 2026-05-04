@@ -51,7 +51,8 @@ func Status(w io.Writer, s *api.ClusterStatus) {
 
 	if s.State == "paused" {
 		fmt.Fprintln(w)
-		fmt.Fprintln(w, Yellow("⚠ paused. Next push or 'grounds cluster up' resumes."))
+		StatusLine(w, StatusWarn, "Workspace", "Paused")
+		DetailLine(w, StatusWarn, "Next push or "+Command("grounds cluster up")+" resumes it.")
 	}
 }
 

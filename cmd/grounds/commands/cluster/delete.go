@@ -3,12 +3,12 @@ package cluster
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
+	"github.com/groundsgg/grounds-cli/internal/render"
 	"github.com/groundsgg/grounds-cli/internal/ui"
 )
 
@@ -36,7 +36,7 @@ func newDelete() *cobra.Command {
 					return errors.New("non-interactive delete requires --yes <namespace>")
 				}
 			} else {
-				fmt.Fprintln(cmd.OutOrStdout(), "⚠  This will permanently delete", s.Namespace, "and all its data.")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Workspace", "This will permanently delete "+s.Namespace+" and all its data")
 				if err := ui.AskTypeName(os.Stdin, cmd.OutOrStdout(), s.Namespace, s.Namespace); err != nil {
 					return err
 				}
@@ -48,9 +48,10 @@ func newDelete() *cobra.Command {
 			}
 			switch res.State {
 			case "deleted":
-				fmt.Fprintln(cmd.OutOrStdout(), "✔ Deleted.")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Workspace", "Deleted "+s.Namespace)
 			case "deleting":
-				fmt.Fprintln(cmd.OutOrStdout(), "→ Stuck Terminating; will be cleaned up by the janitor on next run.")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Workspace", "Delete is still in progress")
+				render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Cleanup will continue automatically.")
 			}
 			return nil
 		},
