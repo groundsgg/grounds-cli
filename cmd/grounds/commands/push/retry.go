@@ -36,8 +36,7 @@ func newRetry() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Push", "Retry triggered for "+p.ID)
-			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Status: "+p.Status)
+			renderRetryTriggered(cmd.OutOrStdout(), p)
 			if !follow {
 				return nil
 			}
@@ -60,4 +59,9 @@ func newRetry() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&follow, "follow", true, "stream logs after retry")
 	return cmd
+}
+
+func renderRetryTriggered(out io.Writer, p *api.Push) {
+	render.StatusLine(out, render.StatusOK, "Push", "Retry triggered for "+p.ID)
+	render.DetailLine(out, render.StatusOK, "Status: "+p.Status)
 }

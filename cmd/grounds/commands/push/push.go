@@ -62,7 +62,7 @@ Targets:
 					Device: defaultDevice(),
 				}
 				if _, err := src.Token(ctx); err != nil {
-					return fmt.Errorf("auth refresh failed: %w\n    ! Run %s to re-authenticate.", err, render.Command("grounds login"))
+					return authRefreshError(err)
 				}
 			}
 
@@ -72,6 +72,10 @@ Targets:
 	}
 	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev (persistent personal ns) or staging (ephemeral preview env, 7d TTL)")
 	return cmd
+}
+
+func authRefreshError(err error) error {
+	return fmt.Errorf("auth refresh failed: %w\n    ! Run %s to re-authenticate.", err, render.Command("grounds login"))
 }
 
 // projectIDFrom resolves the global --project flag, falling back to

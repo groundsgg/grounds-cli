@@ -2,9 +2,14 @@ package push
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/fatih/color"
+
+	"github.com/groundsgg/grounds-cli/internal/api"
 )
 
 // Validates the --target flag's allow-list before grounds-push gets
@@ -45,16 +50,25 @@ func TestPushDefaultTargetIsDev(t *testing.T) {
 
 func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
 	dir := t.TempDir()
-	cwd, _ := os.Getwd()
-	defer os.Chdir(cwd)
-	os.Chdir(dir)
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
 
 	cmd := newPush()
 	cmd.SetArgs([]string{})
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true
 
-	err := cmd.Execute()
+	err = cmd.Execute()
 	if err == nil {
 		t.Fatal("expected missing Gradle wrapper error")
 	}
@@ -64,5 +78,43 @@ func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
 	}
 	if strings.Contains(got, "→") || strings.Contains(got, "'grounds init'") {
 		t.Fatalf("error = %q, should not use arrows or single-quoted commands", got)
+	}
+}
+
+func TestPushAuthRefreshErrorSuggestsLoginCommand(t *testing.T) {
+	err := authRefreshError(errors.New("token expired"))
+
+	got := err.Error()
+	if !strings.Contains(got, "Run `grounds login`") {
+		t.Fatalf("error = %q, want login command suggestion", got)
+	}
+	if strings.Contains(got, "→") || strings.Contains(got, "'grounds login'") {
+		t.Fatalf("error = %q, should not use arrows or single-quoted commands", got)
+	}
+}
+
+func TestRenderRetryTriggered(t *testing.T) {
+	color.NoColor = true
+	t.Cleanup(func() { color.NoColor = false })
+
+	var buf bytes.Buffer
+	renderRetryTriggered(&buf, &api.Push{ID: "push-123", Status: "queued"})
+
+	want := "[✓] Push - Retry triggered for push-123\n    • Status: queued\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("retry output = %q, want %q", got, want)
+	}
+}
+
+func TestRenderPushPaginationNote(t *testing.T) {
+	color.NoColor = true
+	t.Cleanup(func() { color.NoColor = false })
+
+	var buf bytes.Buffer
+	renderPushPaginationNote(&buf)
+
+	want := "[!] Push - More results are available\n    ! Pagination is not available in this CLI version.\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("pagination output = %q, want %q", got, want)
 	}
 }

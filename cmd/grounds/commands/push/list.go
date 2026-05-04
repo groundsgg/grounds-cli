@@ -2,6 +2,7 @@ package push
 
 import (
 	"context"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -40,8 +41,7 @@ func newList() *cobra.Command {
 			}
 			render.Table(cmd.OutOrStdout(), header, rows)
 			if list.NextCursor != "" {
-				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Push", "More results are available")
-				render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Pagination is not available in this CLI version.")
+				renderPushPaginationNote(cmd.OutOrStdout())
 			}
 			return nil
 		},
@@ -49,4 +49,9 @@ func newList() *cobra.Command {
 	cmd.Flags().BoolVar(&mine, "mine", false, "filter to caller's pushes only")
 	cmd.Flags().IntVar(&limit, "limit", 20, "page size")
 	return cmd
+}
+
+func renderPushPaginationNote(out io.Writer) {
+	render.StatusLine(out, render.StatusWarn, "Push", "More results are available")
+	render.DetailLine(out, render.StatusWarn, "Pagination is not available in this CLI version.")
 }
