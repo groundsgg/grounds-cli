@@ -17,8 +17,9 @@ func newUp() *cobra.Command {
 	var bundleRef string
 	var overridePath string
 	cmd := &cobra.Command{
-		Use:   "up [--profile=minigame|platform] [--bundle=<ref> [--override=<file>]]",
-		Short: "Spawn or resume the workspace",
+		Use:     "up [--profile=minigame|platform] [--bundle=<ref> [--override=<file>]]",
+		Short:   "Spawn or resume the workspace",
+		Example: "  grounds cluster up\n  grounds cluster up --profile=platform\n  grounds cluster up --bundle=0.4.0 --override=./overrides/me.yaml",
 		Long: `Create the workspace if it doesn't exist, or resume it from a paused state.
 
 Profiles:

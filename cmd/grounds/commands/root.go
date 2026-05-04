@@ -9,8 +9,8 @@ import (
 func NewRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "grounds",
-		Short:         "Grounds Internal Developer Platform CLI",
-		Long:          "Drives the Grounds platform from the terminal.",
+		Short:         "Grounds developer platform CLI",
+		Long:          "Build, deploy, inspect, and troubleshoot Grounds projects from the terminal.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

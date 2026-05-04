@@ -24,8 +24,9 @@ import (
 //	grounds preview unpin  — re-enable TTL sweep
 func NewPreviewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "preview",
-		Short: "Manage preview environments (target=staging deploys)",
+		Use:     "preview",
+		Short:   "Manage staging preview environments",
+		Example: "  grounds preview list\n  grounds preview show <id>\n  grounds preview pin <id>\n  grounds preview unpin <id>",
 	}
 	cmd.AddCommand(newList(), newShow(), newPin(true), newPin(false))
 	return cmd

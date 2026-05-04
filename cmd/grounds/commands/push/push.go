@@ -16,7 +16,11 @@ import (
 )
 
 func NewPushCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "push", Short: "Build and deploy the current project"}
+	cmd := &cobra.Command{
+		Use:     "push",
+		Short:   "Build and deploy the current project",
+		Example: "  grounds push\n  grounds push --target=staging\n  grounds push list --mine",
+	}
 	cmd.AddCommand(newPush(), newRetry(), newList())
 	return cmd
 }
@@ -24,8 +28,9 @@ func NewPushCommand() *cobra.Command {
 func newPush() *cobra.Command {
 	var target string
 	cmd := &cobra.Command{
-		Use:   "push [--target=dev|staging]",
-		Short: "Build via Gradle plugin and deploy to a target",
+		Use:     "push [--target=dev|staging]",
+		Short:   "Build via Gradle plugin and deploy to a target",
+		Example: "  grounds push\n  grounds push --target=staging",
 		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
 
 Targets:
