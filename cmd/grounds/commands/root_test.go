@@ -25,3 +25,14 @@ func TestRootCommandAppliesNoColorFlag(t *testing.T) {
 		t.Fatal("expected --no-color to disable color output")
 	}
 }
+
+func TestRootOutputFlagMentionsDataCommands(t *testing.T) {
+	root := NewRootCommand()
+	flag := root.PersistentFlags().Lookup("output")
+	if flag == nil {
+		t.Fatal("missing output flag")
+	}
+	if got := flag.Usage; got != "output format for data commands: table | json | yaml" {
+		t.Fatalf("output flag usage = %q", got)
+	}
+}

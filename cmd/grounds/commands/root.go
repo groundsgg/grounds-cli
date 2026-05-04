@@ -26,7 +26,7 @@ func NewRootCommand() *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().String("api-url", "", "override API endpoint (also GROUNDS_API_URL)")
-	cmd.PersistentFlags().String("output", "table", "output format: table | json | yaml")
+	cmd.PersistentFlags().String("output", "table", "output format for data commands: table | json | yaml")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "debug logging to stderr")
 	cmd.PersistentFlags().Bool("no-color", false, "disable colour output")
 	cmd.PersistentFlags().String("config", "", "alternative config directory (also GROUNDS_CONFIG_DIR)")
