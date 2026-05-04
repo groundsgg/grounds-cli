@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -41,10 +42,7 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Browser", "Device login page ready")
-			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "URL: "+dc.VerificationURI)
-			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Code: "+dc.UserCode)
-			_ = browser.OpenURL(dc.VerificationURIComplete)
+			printDeviceLoginInstructions(cmd.OutOrStdout(), dc, browser.OpenURL(dc.VerificationURIComplete))
 
 			tok, err := device.PollToken(ctx, dc.DeviceCode, dc.CodeVerifier, dc.Interval, dc.ExpiresIn)
 			if err != nil {
@@ -64,6 +62,17 @@ func NewLoginCommand() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func printDeviceLoginInstructions(out io.Writer, dc *auth.DeviceCodeResponse, openErr error) {
+	if openErr != nil {
+		render.StatusLine(out, render.StatusWarn, "Browser", "Could not open device login page automatically")
+		render.DetailLine(out, render.StatusWarn, "URL: "+dc.VerificationURI)
+		render.DetailLine(out, render.StatusWarn, "Code: "+dc.UserCode)
+		return
+	}
+	render.StatusLine(out, render.StatusOK, "Browser", "Opened device login page")
+	render.DetailLine(out, render.StatusOK, "Code: "+dc.UserCode)
 }
 
 func loginSubject(preferred, email string) string {
