@@ -22,7 +22,6 @@ func newDown() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Workspace", "Paused")
 			render.Status(cmd.OutOrStdout(), s)
 			return nil
 		},
