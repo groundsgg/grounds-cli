@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
 
 	"github.com/groundsgg/grounds-cli/internal/api"
 )
@@ -45,6 +47,23 @@ func TestPushDefaultTargetIsDev(t *testing.T) {
 	}
 	if flag.DefValue != "dev" {
 		t.Errorf("expected default --target=dev, got %q", flag.DefValue)
+	}
+}
+
+func TestPushTargetCompletion(t *testing.T) {
+	cmd := newPush()
+	completion, ok := cmd.GetFlagCompletionFunc("target")
+	if !ok {
+		t.Fatal("expected --target completion function")
+	}
+
+	got, directive := completion(cmd, nil, "")
+	want := []string{"dev", "staging"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("target completions = %v, want %v", got, want)
+	}
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Fatalf("completion directive = %v, want %v", directive, cobra.ShellCompDirectiveNoFileComp)
 	}
 }
 
