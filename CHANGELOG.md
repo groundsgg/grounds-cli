@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.12](https://github.com/groundsgg/grounds-cli/compare/v0.1.11...v0.1.12) (2026-05-04)
+
+
+### Features
+
+* **bundle:** grounds bundle list / show ([#29](https://github.com/groundsgg/grounds-cli/issues/29)) ([ad42a5f](https://github.com/groundsgg/grounds-cli/commit/ad42a5fb428ac2d458c7abedeafeacdd9b0deb7a))
+* **cluster:** add --bundle / --override to drive PlatformBundle deploys ([#27](https://github.com/groundsgg/grounds-cli/issues/27)) ([b9b07f1](https://github.com/groundsgg/grounds-cli/commit/b9b07f181cc6b518fcd12ede1f34b056735b8e0f))
+* **devspace:** add `grounds devspace generate <component>` subcommand ([#28](https://github.com/groundsgg/grounds-cli/issues/28)) ([82ba13a](https://github.com/groundsgg/grounds-cli/commit/82ba13ac7d98792097272a04defc70d6c224dc73))
+
 ## [0.1.11](https://github.com/groundsgg/grounds-cli/compare/v0.1.10...v0.1.11) (2026-04-30)
 
 
