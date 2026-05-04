@@ -12,6 +12,7 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func NewPushCommand() *cobra.Command {
@@ -41,7 +42,7 @@ Targets:
 			}
 			wrapper, err := gradle.FindWrapper(cwd)
 			if err != nil {
-				return fmt.Errorf("%w\n  → not a Gradle project? Run 'grounds init' to scaffold, or cd to your project root", err)
+				return fmt.Errorf("%w\n    ! Not a Gradle project? Run %s to scaffold, or cd to your project root.", err, render.Command("grounds init"))
 			}
 			ctx := context.Background()
 
@@ -61,7 +62,7 @@ Targets:
 					Device: defaultDevice(),
 				}
 				if _, err := src.Token(ctx); err != nil {
-					return fmt.Errorf("auth refresh failed: %w\n  → run 'grounds login' to re-authenticate", err)
+					return fmt.Errorf("auth refresh failed: %w\n    ! Run %s to re-authenticate.", err, render.Command("grounds login"))
 				}
 			}
 

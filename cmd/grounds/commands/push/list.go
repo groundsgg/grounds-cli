@@ -2,7 +2,6 @@ package push
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -41,7 +40,8 @@ func newList() *cobra.Command {
 			}
 			render.Table(cmd.OutOrStdout(), header, rows)
 			if list.NextCursor != "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "(more available; pagination flag TBD)")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Push", "More results are available")
+				render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Pagination is not available in this CLI version.")
 			}
 			return nil
 		},

@@ -2,7 +2,6 @@ package push
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/api"
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/internal/render"
 	"github.com/groundsgg/grounds-cli/internal/sse"
 )
 
@@ -36,7 +36,8 @@ func newRetry() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "→ Retry triggered for", p.ID, "status:", p.Status)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Push", "Retry triggered for "+p.ID)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Status: "+p.Status)
 			if !follow {
 				return nil
 			}

@@ -2,6 +2,7 @@ package push
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 )
@@ -39,5 +40,29 @@ func TestPushDefaultTargetIsDev(t *testing.T) {
 	}
 	if flag.DefValue != "dev" {
 		t.Errorf("expected default --target=dev, got %q", flag.DefValue)
+	}
+}
+
+func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
+	dir := t.TempDir()
+	cwd, _ := os.Getwd()
+	defer os.Chdir(cwd)
+	os.Chdir(dir)
+
+	cmd := newPush()
+	cmd.SetArgs([]string{})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected missing Gradle wrapper error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "Run `grounds init`") {
+		t.Fatalf("error = %q, want command suggestion", got)
+	}
+	if strings.Contains(got, "→") || strings.Contains(got, "'grounds init'") {
+		t.Fatalf("error = %q, should not use arrows or single-quoted commands", got)
 	}
 }
