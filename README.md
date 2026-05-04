@@ -7,7 +7,7 @@ Drives the Grounds Internal Developer Platform from your terminal.
 ### macOS / Linux (Homebrew)
 
 ```bash
-brew install groundsgg/tap/grounds
+brew install --cask groundsgg/tap/grounds
 ```
 
 ### Windows (Scoop)

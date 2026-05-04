@@ -34,7 +34,7 @@ jobs:
       - name: Publish release packages
         uses: goreleaser/goreleaser-action@v6
         with:
-          version: latest
+          version: "~> v2"
           args: release --clean
         env:
           # GITHUB_TOKEN: default per-repo token. Used for the grounds-cli
