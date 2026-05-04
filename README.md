@@ -40,18 +40,18 @@ grounds logs <pushId> --follow         # tail logs
 
 ## Commands
 
-| Command | What |
-|---|---|
-| `grounds login / logout` | Auth via Keycloak device flow |
-| `grounds version` | Build info |
-| `grounds completion <shell>` | Shell completions |
-| `grounds doctor` | Diagnose env (auth, API, gradle, java) |
-| `grounds init` | Scaffold a grounds.yaml |
-| `grounds cluster up/down/delete/status` | Workspace lifecycle |
-| `grounds push [--target=dev]` | Build + deploy via Gradle plugin |
-| `grounds push retry/list` | Re-run / list pushes |
-| `grounds logs <pushId> [--follow]` | Stream logs |
-| `grounds logs deployment <name> [--follow]` | Stream deployment logs |
+| Command                                     | What                                         |
+|---------------------------------------------|----------------------------------------------|
+| `grounds login / logout`                    | Auth via Keycloak device flow                |
+| `grounds version [--check]`                 | Build info and optional release update check |
+| `grounds completion <shell>`                | Shell completions                            |
+| `grounds doctor`                            | Diagnose env and warn about CLI updates      |
+| `grounds init`                              | Scaffold a grounds.yaml                      |
+| `grounds cluster up/down/delete/status`     | Workspace lifecycle                          |
+| `grounds push [--target=dev]`               | Build + deploy via Gradle plugin             |
+| `grounds push retry/list`                   | Re-run / list pushes                         |
+| `grounds logs <pushId> [--follow]`          | Stream logs                                  |
+| `grounds logs deployment <name> [--follow]` | Stream deployment logs                       |
 
 ## Configuration
 

@@ -15,6 +15,7 @@ func SetEnabled(disable bool) {
 	}
 	// Auto-detect from terminal capability (fatih/color does this by
 	// default for color.NoColor=false).
+	color.NoColor = false
 }
 
 func Green(s string) string  { return color.New(color.FgGreen).SprintFunc()(s) }

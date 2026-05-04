@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -43,6 +44,9 @@ func main() {
 	// captured event as a tag so issues group by subcommand.
 	executedCmd, err := root.ExecuteC()
 	if err != nil {
+		if errors.Is(err, commands.ErrDoctorIssuesFound) {
+			os.Exit(1)
+		}
 		commandPath := ""
 		if executedCmd != nil {
 			commandPath = executedCmd.CommandPath()
