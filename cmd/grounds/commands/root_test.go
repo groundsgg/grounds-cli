@@ -26,13 +26,9 @@ func TestRootCommandAppliesNoColorFlag(t *testing.T) {
 	}
 }
 
-func TestRootOutputFlagMentionsDataCommands(t *testing.T) {
+func TestRootCommandDoesNotAdvertiseUnusedOutputFlag(t *testing.T) {
 	root := NewRootCommand()
-	flag := root.PersistentFlags().Lookup("output")
-	if flag == nil {
-		t.Fatal("missing output flag")
-	}
-	if got := flag.Usage; got != "output format for data commands: table | json | yaml" {
-		t.Fatalf("output flag usage = %q", got)
+	if flag := root.PersistentFlags().Lookup("output"); flag != nil {
+		t.Fatalf("unexpected unused output flag: %q", flag.Usage)
 	}
 }
