@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -14,6 +14,7 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/browser"
 	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 const (
@@ -41,9 +42,7 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "→ Opening browser to", dc.VerificationURI)
-			fmt.Fprintln(cmd.OutOrStdout(), "  Verification code:", dc.UserCode)
-			_ = browser.OpenURL(dc.VerificationURIComplete)
+			printDeviceLoginInstructions(cmd.OutOrStdout(), dc, browser.OpenURL(dc.VerificationURIComplete))
 
 			tok, err := device.PollToken(ctx, dc.DeviceCode, dc.CodeVerifier, dc.Interval, dc.ExpiresIn)
 			if err != nil {
@@ -59,10 +58,31 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "✔ Authenticated as", preferred)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged in as "+loginSubject(preferred, email))
 			return nil
 		},
 	}
+}
+
+func printDeviceLoginInstructions(out io.Writer, dc *auth.DeviceCodeResponse, openErr error) {
+	if openErr != nil {
+		render.StatusLine(out, render.StatusWarn, "Browser", "Could not open device login page automatically")
+		render.DetailLine(out, render.StatusWarn, "URL: "+dc.VerificationURI)
+		render.DetailLine(out, render.StatusWarn, "Code: "+dc.UserCode)
+		return
+	}
+	render.StatusLine(out, render.StatusOK, "Browser", "Opened device login page")
+	render.DetailLine(out, render.StatusOK, "Code: "+dc.UserCode)
+}
+
+func loginSubject(preferred, email string) string {
+	if preferred != "" {
+		return preferred
+	}
+	if email != "" {
+		return email
+	}
+	return "current user"
 }
 
 func decodeIDToken(idToken string) (email, preferred string) {

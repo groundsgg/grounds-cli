@@ -94,9 +94,20 @@ func runDoctorChecks(ctx context.Context, out io.Writer, checks []doctorCheck, i
 }
 
 func printCheckResult(out io.Writer, r checkResult) {
-	fmt.Fprintf(out, "%s %s - %s\n", statusBadge(r.status), r.name, r.summary)
+	render.StatusLine(out, renderStatus(r.status), r.name, r.summary)
 	for _, detail := range r.details {
-		fmt.Fprintf(out, "    %s %s\n", detailIcon(r.status), detail)
+		render.DetailLine(out, renderStatus(r.status), detail)
+	}
+}
+
+func renderStatus(status checkStatus) render.StatusKind {
+	switch status {
+	case statusWarn:
+		return render.StatusWarn
+	case statusError:
+		return render.StatusError
+	default:
+		return render.StatusOK
 	}
 }
 
@@ -124,28 +135,6 @@ func printDoctorFooter(out io.Writer, results []checkResult, strict bool) error 
 	}
 	fmt.Fprintln(out, render.Green("✓"), "Doctor found no issues.")
 	return nil
-}
-
-func statusBadge(status checkStatus) string {
-	switch status {
-	case statusWarn:
-		return render.Yellow("[!]")
-	case statusError:
-		return render.Red("[✗]")
-	default:
-		return render.Green("[✓]")
-	}
-}
-
-func detailIcon(status checkStatus) string {
-	switch status {
-	case statusError:
-		return render.Red("✗")
-	case statusWarn:
-		return render.Yellow("!")
-	default:
-		return "•"
-	}
 }
 
 func categoryWord(count int) string {

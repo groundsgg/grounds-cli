@@ -40,6 +40,15 @@ func TestPinUseLineDiffersFromUnpin(t *testing.T) {
 	}
 }
 
+func TestPreviewPinSummary(t *testing.T) {
+	if got := previewPinSummary(true, "abcdef1234", "plugin-social"); got != "Pinned abcdef12 (plugin-social)" {
+		t.Fatalf("previewPinSummary(pin) = %q", got)
+	}
+	if got := previewPinSummary(false, "abcdef1234", "plugin-social"); got != "Unpinned abcdef12 (plugin-social)" {
+		t.Fatalf("previewPinSummary(unpin) = %q", got)
+	}
+}
+
 func TestShortIDTruncatesAt8Chars(t *testing.T) {
 	cases := map[string]string{
 		"abc":                              "abc",

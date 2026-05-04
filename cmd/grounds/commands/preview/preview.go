@@ -24,8 +24,9 @@ import (
 //	grounds preview unpin  — re-enable TTL sweep
 func NewPreviewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "preview",
-		Short: "Manage preview environments (target=staging deploys)",
+		Use:     "preview",
+		Short:   "Manage staging preview environments",
+		Example: "  grounds preview list\n  grounds preview show <id>\n  grounds preview pin <id>\n  grounds preview unpin <id>",
 	}
 	cmd.AddCommand(newList(), newShow(), newPin(true), newPin(false))
 	return cmd
@@ -87,7 +88,8 @@ func newList() *cobra.Command {
 				return err
 			}
 			if len(res.Items) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "no preview environments")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Preview", "No preview environments found")
+				render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Run "+render.Command("grounds push --target=staging")+" to create one.")
 				return nil
 			}
 			header := []string{"ID", "PUSH", "NAME", "TYPE", "STATUS", "PINNED", "EXPIRES", "URL"}
@@ -145,11 +147,14 @@ func newShow() *cobra.Command {
 				enc.SetIndent("", "  ")
 				return enc.Encode(p)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "ID:        %s\nPushID:    %s\nNamespace: %s\nName:      %s (%s)\nStatus:    %s\nPinned:    %t\nExpires:   %s\nURL:       %s\n",
-				p.ID, p.PushID, p.Namespace,
-				p.Push.ManifestName, p.Push.ManifestType,
-				p.Push.Status, p.Pinned,
-				formatTime(p.ExpiresAt), p.PublicURL)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Preview", p.Push.ManifestName+" ("+p.Push.Status+")")
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "ID: "+p.ID)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Push: "+p.PushID)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Namespace: "+p.Namespace)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Type: "+p.Push.ManifestType)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, fmt.Sprintf("Pinned: %t", p.Pinned))
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Expires: "+formatTime(p.ExpiresAt))
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "URL: "+p.PublicURL)
 			return nil
 		},
 	}
@@ -182,11 +187,7 @@ func newPin(pin bool) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			verb := "pinned"
-			if !pin {
-				verb = "unpinned"
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "%s %s (%s)\n", verb, shortID(p.ID), p.Push.ManifestName)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Preview", previewPinSummary(pin, p.ID, p.Push.ManifestName))
 			return nil
 		},
 	}
@@ -199,6 +200,14 @@ func shortID(s string) string {
 		return s
 	}
 	return s[:8]
+}
+
+func previewPinSummary(pin bool, id, manifestName string) string {
+	verb := "Pinned"
+	if !pin {
+		verb = "Unpinned"
+	}
+	return fmt.Sprintf("%s %s (%s)", verb, shortID(id), manifestName)
 }
 
 func formatTime(t *time.Time) string {

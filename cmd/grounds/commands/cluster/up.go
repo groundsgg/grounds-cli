@@ -17,8 +17,9 @@ func newUp() *cobra.Command {
 	var bundleRef string
 	var overridePath string
 	cmd := &cobra.Command{
-		Use:   "up [--profile=minigame|platform] [--bundle=<ref> [--override=<file>]]",
-		Short: "Spawn or resume the workspace",
+		Use:     "up [--profile=minigame|platform] [--bundle=<ref> [--override=<file>]]",
+		Short:   "Spawn or resume the workspace",
+		Example: "  grounds cluster up\n  grounds cluster up --profile=platform\n  grounds cluster up --bundle=0.4.0 --override=./overrides/me.yaml",
 		Long: `Create the workspace if it doesn't exist, or resume it from a paused state.
 
 Profiles:
@@ -69,7 +70,7 @@ Profile is locked once a workspace exists. To switch, ` + "`grounds cluster dele
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "✔ Active.")
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Workspace", "Active")
 			render.Status(cmd.OutOrStdout(), s)
 			return nil
 		},
@@ -112,13 +113,15 @@ func loadBundleRequest(bundleRef, overridePath string) (*api.BundleUpRequest, er
 func renderBundleResult(w interface {
 	Write(p []byte) (int, error)
 }, res *api.BundleUpResult) {
-	fmt.Fprintf(w, "✔ %s — bundle %s — %s\n", res.State, res.BundleVersion, res.Namespace)
-	fmt.Fprintf(w, "  components: %d resolved, %d succeeded, %d failed\n",
-		res.Components.Resolved, len(res.Components.Succeeded), len(res.Components.Failed))
+	status := render.StatusOK
+	summary := fmt.Sprintf("%s with bundle %s in namespace %s", res.State, res.BundleVersion, res.Namespace)
 	if len(res.Components.Failed) > 0 {
-		fmt.Fprintln(w, "  failed:")
-		for _, f := range res.Components.Failed {
-			fmt.Fprintf(w, "    - %s: %s\n", f.Name, f.Error)
-		}
+		status = render.StatusWarn
+	}
+	render.StatusLine(w, status, "Workspace", summary)
+	render.DetailLine(w, status, fmt.Sprintf("Components: %d resolved, %d succeeded, %d failed",
+		res.Components.Resolved, len(res.Components.Succeeded), len(res.Components.Failed)))
+	for _, f := range res.Components.Failed {
+		render.DetailLine(w, render.StatusError, fmt.Sprintf("%s: %s", f.Name, f.Error))
 	}
 }

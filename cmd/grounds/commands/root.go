@@ -9,8 +9,8 @@ import (
 func NewRootCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:           "grounds",
-		Short:         "Grounds Internal Developer Platform CLI",
-		Long:          "Drives the Grounds platform from the terminal.",
+		Short:         "Grounds developer platform CLI",
+		Long:          "Build, deploy, inspect, and troubleshoot Grounds projects from the terminal.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -26,7 +26,6 @@ func NewRootCommand() *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().String("api-url", "", "override API endpoint (also GROUNDS_API_URL)")
-	cmd.PersistentFlags().String("output", "table", "output format: table | json | yaml")
 	cmd.PersistentFlags().BoolP("verbose", "v", false, "debug logging to stderr")
 	cmd.PersistentFlags().Bool("no-color", false, "disable colour output")
 	cmd.PersistentFlags().String("config", "", "alternative config directory (also GROUNDS_CONFIG_DIR)")

@@ -15,8 +15,9 @@ import (
 
 func NewBundleCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "bundle",
-		Short: "Inspect available platform-test bundles",
+		Use:     "bundle",
+		Short:   "Inspect available platform-test bundles",
+		Example: "  grounds bundle list\n  grounds bundle show main\n  grounds bundle show 0.4.0",
 	}
 	cmd.AddCommand(newList(), newShow())
 	return cmd

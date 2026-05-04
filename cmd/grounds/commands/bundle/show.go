@@ -14,7 +14,7 @@ func newShow() *cobra.Command {
 		Use:   "show <ref>",
 		Short: "Show the components in a bundle",
 		Long: `Fetches the parsed bundle.yaml at the given ref and prints the
-component table. <ref> accepts the same shapes as 'cluster up --bundle':
+component table. <ref> accepts the same shapes as ` + "`grounds cluster up --bundle`" + `:
 semver, "v…", the full release tag, or "main" for the latest commit.
 
 Examples:

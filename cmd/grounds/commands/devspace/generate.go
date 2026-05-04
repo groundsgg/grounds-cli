@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/groundsgg/grounds-cli/internal/api"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func newGenerate() *cobra.Command {
@@ -67,7 +68,7 @@ Examples:
 			if err := os.WriteFile(outputPath, yaml, 0o644); err != nil {
 				return fmt.Errorf("writing %s: %w", outputPath, err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "✔ Wrote %d bytes to %s\n", len(yaml), outputPath)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "DevSpace", generateSuccessSummary(outputPath))
 			return nil
 		},
 	}
@@ -75,6 +76,10 @@ Examples:
 	cmd.Flags().StringVar(&overridePath, "override", "", "path to an Engineer-Override-File (YAML)")
 	cmd.Flags().StringVarP(&outputPath, "output", "o", "./devspace.yaml", "output path (use '-' for stdout)")
 	return cmd
+}
+
+func generateSuccessSummary(outputPath string) string {
+	return "Wrote " + outputPath
 }
 
 // loadGenerateInputs picks the bundle-ref + per-component override

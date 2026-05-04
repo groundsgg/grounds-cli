@@ -12,25 +12,29 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func NewPushCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "push", Short: "Build and deploy the current project"}
-	cmd.AddCommand(newPush(), newRetry(), newList())
+	cmd := newPush()
+	cmd.Example = "  grounds push\n  grounds push --target=staging\n  grounds push list --mine"
+	cmd.AddCommand(newRetry(), newList())
 	return cmd
 }
 
 func newPush() *cobra.Command {
 	var target string
 	cmd := &cobra.Command{
-		Use:   "push [--target=dev|staging]",
-		Short: "Build via Gradle plugin and deploy to a target",
+		Use:     "push [--target=dev|staging]",
+		Short:   "Build via Gradle plugin and deploy to a target",
+		Example: "  grounds push\n  grounds push --target=staging",
 		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
 
 Targets:
   dev     — long-lived, lands in your personal namespace (user-<handle>).
   staging — ephemeral preview env, fresh namespace per push, auto-deleted after 7 days.
             Public URL pattern: <name>-pr<id>.dev.grnds.io.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if target != "dev" && target != "staging" {
 				return fmt.Errorf("invalid --target %q: must be \"dev\" or \"staging\"", target)
@@ -41,7 +45,7 @@ Targets:
 			}
 			wrapper, err := gradle.FindWrapper(cwd)
 			if err != nil {
-				return fmt.Errorf("%w\n  → not a Gradle project? Run 'grounds init' to scaffold, or cd to your project root", err)
+				return fmt.Errorf("%w\n    ! Not a Gradle project? Run %s to scaffold, or cd to your project root.", err, render.Command("grounds init"))
 			}
 			ctx := context.Background()
 
@@ -61,7 +65,7 @@ Targets:
 					Device: defaultDevice(),
 				}
 				if _, err := src.Token(ctx); err != nil {
-					return fmt.Errorf("auth refresh failed: %w\n  → run 'grounds login' to re-authenticate", err)
+					return authRefreshError(err)
 				}
 			}
 
@@ -70,7 +74,14 @@ Targets:
 		},
 	}
 	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev (persistent personal ns) or staging (ephemeral preview env, 7d TTL)")
+	_ = cmd.RegisterFlagCompletionFunc("target", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return []string{"dev", "staging"}, cobra.ShellCompDirectiveNoFileComp
+	})
 	return cmd
+}
+
+func authRefreshError(err error) error {
+	return fmt.Errorf("auth refresh failed: %w\n    ! Run %s to re-authenticate.", err, render.Command("grounds login"))
 }
 
 // projectIDFrom resolves the global --project flag, falling back to

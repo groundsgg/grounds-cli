@@ -2,7 +2,7 @@ package push
 
 import (
 	"context"
-	"fmt"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -18,6 +18,7 @@ func newList() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List pushes",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			cfg, err := config.Load("")
@@ -41,7 +42,7 @@ func newList() *cobra.Command {
 			}
 			render.Table(cmd.OutOrStdout(), header, rows)
 			if list.NextCursor != "" {
-				fmt.Fprintln(cmd.OutOrStdout(), "(more available; pagination flag TBD)")
+				renderPushPaginationNote(cmd.OutOrStdout())
 			}
 			return nil
 		},
@@ -49,4 +50,9 @@ func newList() *cobra.Command {
 	cmd.Flags().BoolVar(&mine, "mine", false, "filter to caller's pushes only")
 	cmd.Flags().IntVar(&limit, "limit", 20, "page size")
 	return cmd
+}
+
+func renderPushPaginationNote(out io.Writer) {
+	render.StatusLine(out, render.StatusWarn, "Push", "More results are available")
+	render.DetailLine(out, render.StatusWarn, "Pagination is not available in this CLI version.")
 }

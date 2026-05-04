@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestGenerateSuccessSummary(t *testing.T) {
+	if got := generateSuccessSummary("./devspace.yaml"); got != "Wrote ./devspace.yaml" {
+		t.Fatalf("generateSuccessSummary = %q", got)
+	}
+}
+
 func TestLoadGenerateInputs(t *testing.T) {
 	t.Run("bundle flag only, no override", func(t *testing.T) {
 		bundle, override, err := loadGenerateInputs("0.4.0", "", "plugin-social")
@@ -71,7 +77,7 @@ overrides: {}
 		}
 	})
 
-	t.Run("component not in override file → override is nil", func(t *testing.T) {
+	t.Run("component missing from override file uses nil override", func(t *testing.T) {
 		path := writeTempYAML(t, `
 bundle: 0.4.0
 overrides:

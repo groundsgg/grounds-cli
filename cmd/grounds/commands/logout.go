@@ -1,12 +1,11 @@
 package commands
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func NewLogoutCommand() *cobra.Command {
@@ -21,7 +20,7 @@ func NewLogoutCommand() *cobra.Command {
 			if err := auth.NewStore(cfg.Dir).Delete(); err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "✔ Logged out.")
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged out")
 			return nil
 		},
 	}

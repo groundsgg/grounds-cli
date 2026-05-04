@@ -14,7 +14,11 @@ import (
 )
 
 func NewClusterCommand() *cobra.Command {
-	cmd := &cobra.Command{Use: "cluster", Short: "Manage your dev workspace lifecycle"}
+	cmd := &cobra.Command{
+		Use:     "cluster",
+		Short:   "Manage your dev workspace lifecycle",
+		Example: "  grounds cluster status\n  grounds cluster up\n  grounds cluster down\n  grounds cluster delete",
+	}
 	cmd.AddCommand(newUp(), newDown(), newDelete(), newStatus())
 	return cmd
 }

@@ -15,8 +15,9 @@ import (
 
 func NewDevspaceCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "devspace",
-		Short: "DevSpace integration helpers",
+		Use:     "devspace",
+		Short:   "DevSpace integration helpers",
+		Example: "  grounds devspace generate plugin-social --bundle main\n  grounds devspace generate plugin-social --override ./me.yaml",
 	}
 	cmd.AddCommand(newGenerate())
 	return cmd

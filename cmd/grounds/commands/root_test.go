@@ -25,3 +25,10 @@ func TestRootCommandAppliesNoColorFlag(t *testing.T) {
 		t.Fatal("expected --no-color to disable color output")
 	}
 }
+
+func TestRootCommandDoesNotAdvertiseUnusedOutputFlag(t *testing.T) {
+	root := NewRootCommand()
+	if flag := root.PersistentFlags().Lookup("output"); flag != nil {
+		t.Fatalf("unexpected unused output flag: %q", flag.Usage)
+	}
+}

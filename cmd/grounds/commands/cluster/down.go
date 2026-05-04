@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -23,7 +22,6 @@ func newDown() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "✔ Paused.")
 			render.Status(cmd.OutOrStdout(), s)
 			return nil
 		},

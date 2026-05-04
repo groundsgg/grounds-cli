@@ -20,8 +20,9 @@ func NewVersionCommand() *cobra.Command {
 	var releaseAPIURL string
 
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Print version, commit, and build date",
+		Use:     "version",
+		Short:   "Print version information and check for updates",
+		Example: "  grounds version\n  grounds version --check",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if _, err := fmt.Fprintf(cmd.OutOrStdout(),
 				"grounds version %s\n  commit: %s\n  built:  %s\n",
