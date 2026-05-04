@@ -70,6 +70,51 @@ func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 	}
 }
 
+func TestPushRootRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {
+	for _, args := range [][]string{
+		{"definitely-not-a-command"},
+		{"push"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			cmd := NewPushCommand()
+			cmd.SetArgs(args)
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
+
+			err := cmd.Execute()
+			if err == nil {
+				t.Fatal("expected unexpected argument error")
+			}
+			got := err.Error()
+			if !strings.Contains(got, "unknown command") {
+				t.Fatalf("error = %q, want argument validation error", got)
+			}
+			if strings.Contains(got, "Run `grounds init`") || strings.Contains(got, "Not a Gradle project") {
+				t.Fatalf("error = %q, should not enter deploy path", got)
+			}
+		})
+	}
+}
+
+func TestPushDeployCommandRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {
+	cmd := newPush()
+	cmd.SetArgs([]string{"definitely-not-a-command"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected unexpected argument error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "unknown command") && !strings.Contains(got, "arg(s)") {
+		t.Fatalf("error = %q, want argument validation error", got)
+	}
+	if strings.Contains(got, "Run `grounds init`") || strings.Contains(got, "Not a Gradle project") {
+		t.Fatalf("error = %q, should not enter deploy path", got)
+	}
+}
+
 func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
 	dir := t.TempDir()
 	cwd, err := os.Getwd()

@@ -34,6 +34,7 @@ Targets:
   dev     — long-lived, lands in your personal namespace (user-<handle>).
   staging — ephemeral preview env, fresh namespace per push, auto-deleted after 7 days.
             Public URL pattern: <name>-pr<id>.dev.grnds.io.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if target != "dev" && target != "staging" {
 				return fmt.Errorf("invalid --target %q: must be \"dev\" or \"staging\"", target)
