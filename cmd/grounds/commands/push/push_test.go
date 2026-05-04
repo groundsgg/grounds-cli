@@ -96,6 +96,25 @@ func TestPushRootRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {
 	}
 }
 
+func TestPushListRejectsUnexpectedArgsBeforeAPIWork(t *testing.T) {
+	cmd := NewPushCommand()
+	cmd.SetArgs([]string{"list", "unexpected"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected unexpected argument error")
+	}
+	got := err.Error()
+	if !strings.Contains(got, "unknown command") && !strings.Contains(got, "arg(s)") {
+		t.Fatalf("error = %q, want argument validation error", got)
+	}
+	if strings.Contains(got, "credentials") || strings.Contains(got, "GROUNDS_TOKEN") {
+		t.Fatalf("error = %q, should not enter auth/API path", got)
+	}
+}
+
 func TestPushDeployCommandRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {
 	cmd := newPush()
 	cmd.SetArgs([]string{"definitely-not-a-command"})
