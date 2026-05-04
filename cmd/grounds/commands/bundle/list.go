@@ -6,6 +6,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func newList() *cobra.Command {
@@ -14,7 +16,7 @@ func newList() *cobra.Command {
 		Short: "List released platform-bundle versions",
 		Long: `Lists released library-platform-bundle versions, newest first.
 Drafts and prereleases are filtered out. The version with (latest) is
-the same one 'grounds cluster up --bundle main' would track today.`,
+the same one ` + "`grounds cluster up --bundle main`" + ` would track today.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			c, err := buildClient(ctx, cmd)
@@ -26,7 +28,8 @@ the same one 'grounds cluster up --bundle main' would track today.`,
 				return err
 			}
 			if len(releases) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "no released bundles found")
+				render.StatusLine(cmd.OutOrStdout(), render.StatusWarn, "Bundle", "No released bundles found")
+				render.DetailLine(cmd.OutOrStdout(), render.StatusWarn, "Try "+render.Command("grounds bundle show main")+" to inspect the current bundle.")
 				return nil
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)

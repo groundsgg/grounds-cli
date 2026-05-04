@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func TestGenerateSuccessSummary(t *testing.T) {
+	if got := generateSuccessSummary("./devspace.yaml"); got != "Wrote ./devspace.yaml" {
+		t.Fatalf("generateSuccessSummary = %q", got)
+	}
+}
+
 func TestLoadGenerateInputs(t *testing.T) {
 	t.Run("bundle flag only, no override", func(t *testing.T) {
 		bundle, override, err := loadGenerateInputs("0.4.0", "", "plugin-social")
