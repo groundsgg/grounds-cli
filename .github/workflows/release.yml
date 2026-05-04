@@ -41,7 +41,7 @@ jobs:
           # release itself (artifact upload, release-notes update). Auto-
           # scoped to grounds-cli only - fine.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # HOMEBREW_TAP_PAT: cross-repo PAT used by the brews + scoops
+          # HOMEBREW_TAP_PAT: cross-repo PAT used by the casks + scoops
           # blocks in .goreleaser.yml to push to the homebrew-tap +
           # scoop-bucket sibling repos. Configure with contents:write +
           # pull-requests:write on those two repos.
