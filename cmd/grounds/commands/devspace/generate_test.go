@@ -77,7 +77,7 @@ overrides: {}
 		}
 	})
 
-	t.Run("component not in override file → override is nil", func(t *testing.T) {
+	t.Run("component missing from override file uses nil override", func(t *testing.T) {
 		path := writeTempYAML(t, `
 bundle: 0.4.0
 overrides:

@@ -143,7 +143,7 @@ func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
 	if !strings.Contains(got, "Run `grounds init`") {
 		t.Fatalf("error = %q, want command suggestion", got)
 	}
-	if strings.Contains(got, "→") || strings.Contains(got, "'grounds init'") {
+	if strings.Contains(got, oldArrow()) || strings.Contains(got, singleQuotedCommand("grounds init")) {
 		t.Fatalf("error = %q, should not use arrows or single-quoted commands", got)
 	}
 }
@@ -155,9 +155,17 @@ func TestPushAuthRefreshErrorSuggestsLoginCommand(t *testing.T) {
 	if !strings.Contains(got, "Run `grounds login`") {
 		t.Fatalf("error = %q, want login command suggestion", got)
 	}
-	if strings.Contains(got, "→") || strings.Contains(got, "'grounds login'") {
+	if strings.Contains(got, oldArrow()) || strings.Contains(got, singleQuotedCommand("grounds login")) {
 		t.Fatalf("error = %q, should not use arrows or single-quoted commands", got)
 	}
+}
+
+func oldArrow() string {
+	return string(rune(0x2192))
+}
+
+func singleQuotedCommand(command string) string {
+	return "'" + command + "'"
 }
 
 func TestRenderRetryTriggered(t *testing.T) {

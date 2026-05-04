@@ -19,7 +19,7 @@ func NewLogsCommand() *cobra.Command {
 	var follow bool
 	cmd := &cobra.Command{
 		Use:     "logs <pushId>",
-		Short:   "Stream push logs (or deployment logs via 'grounds logs deployment <name>')",
+		Short:   "Stream push logs, or deployment logs with `grounds logs deployment <name>`",
 		Example: "  grounds logs <pushId>\n  grounds logs <pushId> --follow\n  grounds logs deployment <name>",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
