@@ -16,12 +16,9 @@ import (
 )
 
 func NewPushCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "push",
-		Short:   "Build and deploy the current project",
-		Example: "  grounds push\n  grounds push --target=staging\n  grounds push list --mine",
-	}
-	cmd.AddCommand(newPush(), newRetry(), newList())
+	cmd := newPush()
+	cmd.Example = "  grounds push\n  grounds push --target=staging\n  grounds push list --mine"
+	cmd.AddCommand(newRetry(), newList())
 	return cmd
 }
 

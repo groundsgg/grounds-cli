@@ -48,6 +48,28 @@ func TestPushDefaultTargetIsDev(t *testing.T) {
 	}
 }
 
+func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
+	cmd := NewPushCommand()
+
+	if flag := cmd.Flag("target"); flag == nil {
+		t.Fatal("expected root push command to define --target")
+	} else if flag.DefValue != "dev" {
+		t.Fatalf("default --target = %q, want %q", flag.DefValue, "dev")
+	}
+
+	for _, name := range []string{"list", "retry"} {
+		if sub, _, err := cmd.Find([]string{name}); err != nil {
+			t.Fatalf("Find(%q) error = %v", name, err)
+		} else if sub.Name() != name {
+			t.Fatalf("Find(%q) = %q, want %q", name, sub.Name(), name)
+		}
+	}
+
+	if sub, _, err := cmd.Find([]string{"push"}); err == nil && sub.Name() == "push" && sub != cmd {
+		t.Fatalf("unexpected nested push subcommand found")
+	}
+}
+
 func TestPushMissingGradleWrapperSuggestsCommand(t *testing.T) {
 	dir := t.TempDir()
 	cwd, err := os.Getwd()
