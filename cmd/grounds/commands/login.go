@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/browser"
 	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 const (
@@ -41,8 +41,9 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "→ Opening browser to", dc.VerificationURI)
-			fmt.Fprintln(cmd.OutOrStdout(), "  Verification code:", dc.UserCode)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Browser", "Opened device login page")
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "URL: "+dc.VerificationURI)
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Code: "+dc.UserCode)
 			_ = browser.OpenURL(dc.VerificationURIComplete)
 
 			tok, err := device.PollToken(ctx, dc.DeviceCode, dc.CodeVerifier, dc.Interval, dc.ExpiresIn)
@@ -59,7 +60,14 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "✔ Authenticated as", preferred)
+			subject := preferred
+			if subject == "" {
+				subject = email
+			}
+			if subject == "" {
+				subject = "current user"
+			}
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged in as "+subject)
 			return nil
 		},
 	}

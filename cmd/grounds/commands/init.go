@@ -8,6 +8,8 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
+
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 type initFlags struct {
@@ -73,7 +75,7 @@ func writeGroundsYaml(out io.Writer, f *initFlags) error {
 	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "→ Wrote grounds.yaml")
-	fmt.Fprintln(out, "Next: grounds push")
+	render.StatusLine(out, render.StatusOK, "Init", "Wrote grounds.yaml")
+	render.DetailLine(out, render.StatusOK, "Next: run "+render.Command("grounds push")+".")
 	return nil
 }

@@ -26,4 +26,7 @@ func TestInit_NonInteractive(t *testing.T) {
 	if !bytes.Contains(body, []byte("name: my-arena")) {
 		t.Errorf("body = %s", body)
 	}
+	if got := buf.String(); got != "[✓] Init - Wrote grounds.yaml\n    • Next: run `grounds push`.\n" {
+		t.Fatalf("output = %q", got)
+	}
 }
