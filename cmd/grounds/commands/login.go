@@ -41,7 +41,7 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Browser", "Opened device login page")
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Browser", "Device login page ready")
 			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "URL: "+dc.VerificationURI)
 			render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Code: "+dc.UserCode)
 			_ = browser.OpenURL(dc.VerificationURIComplete)
@@ -60,17 +60,20 @@ func NewLoginCommand() *cobra.Command {
 				return err
 			}
 
-			subject := preferred
-			if subject == "" {
-				subject = email
-			}
-			if subject == "" {
-				subject = "current user"
-			}
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged in as "+subject)
+			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged in as "+loginSubject(preferred, email))
 			return nil
 		},
 	}
+}
+
+func loginSubject(preferred, email string) string {
+	if preferred != "" {
+		return preferred
+	}
+	if email != "" {
+		return email
+	}
+	return "current user"
 }
 
 func decodeIDToken(idToken string) (email, preferred string) {
