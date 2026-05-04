@@ -3,9 +3,15 @@ package commands
 import (
 	"bytes"
 	"testing"
+
+	"github.com/fatih/color"
 )
 
 func TestLogoutOutput(t *testing.T) {
+	previous := color.NoColor
+	color.NoColor = true
+	t.Cleanup(func() { color.NoColor = previous })
+
 	t.Setenv("GROUNDS_CONFIG_DIR", t.TempDir())
 
 	cmd := NewLogoutCommand()
