@@ -24,16 +24,21 @@ func NewPushCommand() *cobra.Command {
 
 func newPush() *cobra.Command {
 	var target string
+	var force bool
 	cmd := &cobra.Command{
-		Use:     "push [--target=dev|staging]",
+		Use:     "push [--target=dev|staging] [--force]",
 		Short:   "Build via Gradle plugin and deploy to a target",
-		Example: "  grounds push\n  grounds push --target=staging",
+		Example: "  grounds push\n  grounds push --target=staging\n  grounds push --force",
 		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
 
 Targets:
   dev     — long-lived, lands in your personal namespace (user-<handle>).
   staging — ephemeral preview env, fresh namespace per push, auto-deleted after 7 days.
-            Public URL pattern: <name>-pr<id>.dev.grnds.io.`,
+            Public URL pattern: <name>-pr<id>.dev.grnds.io.
+
+--force re-runs the build pipeline even when forge's contentHash dedup
+would have reused an existing image. Useful when the upstream base
+image moved under a stable tag, or to re-observe the build flow.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if target != "dev" && target != "staging" {
@@ -70,6 +75,9 @@ Targets:
 			}
 
 			args := []string{"groundsPush", "--target=" + target}
+			if force {
+				args = append(args, "--force")
+			}
 			return gradle.Run(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 		},
 	}
@@ -77,6 +85,7 @@ Targets:
 	_ = cmd.RegisterFlagCompletionFunc("target", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dev", "staging"}, cobra.ShellCompDirectiveNoFileComp
 	})
+	cmd.Flags().BoolVar(&force, "force", false, "skip contentHash dedup and force a fresh build")
 	return cmd
 }
 
