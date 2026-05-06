@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.15](https://github.com/groundsgg/grounds-cli/compare/v0.1.14...v0.1.15) (2026-05-06)
+
+
+### Bug Fixes
+
+* **auth:** treat refresh_expires_in=0 as no-expiry for offline tokens ([#40](https://github.com/groundsgg/grounds-cli/issues/40)) ([81355c7](https://github.com/groundsgg/grounds-cli/commit/81355c7f32c77ab0ed6202bb7db87127415e86f3))
+
 ## [0.1.14](https://github.com/groundsgg/grounds-cli/compare/v0.1.13...v0.1.14) (2026-05-05)
 
 
