@@ -45,3 +45,29 @@ func ParseCredentials(b []byte) (*Credentials, error) {
 	}
 	return c, nil
 }
+
+// RefreshExpiryFromSeconds turns the OAuth `refresh_expires_in` field
+// into the absolute timestamp we persist. Keycloak returns `0` for
+// offline tokens (the canonical "no expiry" indicator), so we map that
+// to the zero `time.Time` value and let the IsRefreshAlive predicate
+// treat it as "lives forever". Naively doing `time.Now().Add(0)` would
+// stamp the token as expired the instant after login, which is exactly
+// the regression that bit grounds-cli — see IsRefreshAlive for the
+// matching read path.
+func RefreshExpiryFromSeconds(seconds int) time.Time {
+	if seconds <= 0 {
+		return time.Time{}
+	}
+	return time.Now().Add(time.Duration(seconds) * time.Second)
+}
+
+// IsRefreshAlive reports whether the stored refresh token is still
+// usable. A zero RefreshExpiresAt means the token is an OIDC offline
+// token (no expiry) and is always alive; otherwise compare to wall
+// clock.
+func (c *Credentials) IsRefreshAlive() bool {
+	if c.RefreshExpiresAt.IsZero() {
+		return true
+	}
+	return time.Now().Before(c.RefreshExpiresAt)
+}

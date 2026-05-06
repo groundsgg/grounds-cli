@@ -46,7 +46,7 @@ func CredentialsFromToken(t *TokenResponse, email, preferred string) *Credential
 		AccessToken:      t.AccessToken,
 		RefreshToken:     t.RefreshToken,
 		ExpiresAt:        time.Now().Add(time.Duration(t.ExpiresIn) * time.Second),
-		RefreshExpiresAt: time.Now().Add(time.Duration(t.RefreshExpiresIn) * time.Second),
+		RefreshExpiresAt: RefreshExpiryFromSeconds(t.RefreshExpiresIn),
 		Email:            email,
 		PreferredUser:    preferred,
 	}

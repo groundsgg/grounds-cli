@@ -83,3 +83,45 @@ func TestParseLegacyFileWithoutVersion(t *testing.T) {
 		t.Errorf("legacy file should be upgraded to v%d, got v%d", CredentialsVersion, c.Version)
 	}
 }
+
+// TestRefreshExpiryFromSeconds_offline maps Keycloak's `0` for offline
+// tokens to a zero `time.Time` so the CLI doesn't immediately decide
+// the refresh token is dead the instant after login.
+func TestRefreshExpiryFromSeconds_offline(t *testing.T) {
+	if !RefreshExpiryFromSeconds(0).IsZero() {
+		t.Error("seconds=0 should map to zero time.Time")
+	}
+	if !RefreshExpiryFromSeconds(-5).IsZero() {
+		t.Error("negative seconds should also map to zero time.Time")
+	}
+}
+
+func TestRefreshExpiryFromSeconds_finite(t *testing.T) {
+	got := RefreshExpiryFromSeconds(60)
+	if got.IsZero() {
+		t.Fatal("seconds=60 should produce a non-zero expiry")
+	}
+	if got.Before(time.Now()) {
+		t.Error("seconds=60 should produce an expiry in the future")
+	}
+}
+
+func TestIsRefreshAlive(t *testing.T) {
+	now := time.Now()
+	cases := []struct {
+		name string
+		c    Credentials
+		want bool
+	}{
+		{"offline (zero time)", Credentials{}, true},
+		{"future", Credentials{RefreshExpiresAt: now.Add(time.Hour)}, true},
+		{"past", Credentials{RefreshExpiresAt: now.Add(-time.Hour)}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.c.IsRefreshAlive(); got != tc.want {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
