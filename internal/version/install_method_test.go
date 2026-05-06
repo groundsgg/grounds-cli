@@ -1,6 +1,10 @@
 package version
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestDetectInstallMethod(t *testing.T) {
 	tests := []struct {
@@ -15,6 +19,17 @@ func TestDetectInstallMethod(t *testing.T) {
 			path:        "/opt/homebrew/Cellar/grounds/0.1.13/bin/grounds",
 			wantMethod:  InstallHomebrew,
 			wantCommand: "brew upgrade groundsgg/tap/grounds",
+		},
+		{
+			name:        "homebrew cask linux target",
+			path:        "/home/linuxbrew/.linuxbrew/Caskroom/grounds/0.1.14/grounds",
+			wantMethod:  InstallHomebrew,
+			wantCommand: "brew upgrade --cask groundsgg/tap/grounds",
+		},
+		{
+			name:       "homebrew prefix bin path without resolved target is unknown",
+			path:       "/tmp/nonexistent-homebrew-prefix/bin/grounds",
+			wantMethod: InstallUnknown,
 		},
 		{
 			name:        "scoop",
@@ -65,5 +80,34 @@ func TestDetectInstallMethod(t *testing.T) {
 				t.Fatalf("update command = %q, want %q", got.UpdateCommand, tt.wantCommand)
 			}
 		})
+	}
+}
+
+func TestDetectInstallMethodResolvesHomebrewCaskSymlink(t *testing.T) {
+	root := t.TempDir()
+	targetDir := filepath.Join(root, "Caskroom", "grounds", "0.1.14")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatalf("create target dir: %v", err)
+	}
+	target := filepath.Join(targetDir, "grounds")
+	if err := os.WriteFile(target, []byte("binary"), 0o755); err != nil {
+		t.Fatalf("create target: %v", err)
+	}
+
+	binDir := filepath.Join(root, "bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatalf("create bin dir: %v", err)
+	}
+	link := filepath.Join(binDir, "grounds")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create symlink: %v", err)
+	}
+
+	got := DetectInstallMethod(link, "")
+	if got.Method != InstallHomebrew {
+		t.Fatalf("method = %q, want %q", got.Method, InstallHomebrew)
+	}
+	if got.UpdateCommand != homebrewCaskUpdateCommand {
+		t.Fatalf("update command = %q, want %q", got.UpdateCommand, homebrewCaskUpdateCommand)
 	}
 }
