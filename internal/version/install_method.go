@@ -21,13 +21,22 @@ type InstallInfo struct {
 }
 
 const rawInstallCommand = "curl -sSL https://github.com/groundsgg/grounds-cli/releases/latest/download/install.sh | bash"
+const homebrewFormulaUpdateCommand = "brew upgrade groundsgg/tap/grounds"
+const homebrewCaskUpdateCommand = "brew upgrade --cask groundsgg/tap/grounds"
 
 func DetectInstallMethod(executablePath, homeDir string) InstallInfo {
 	normalized := normalizePath(executablePath)
+	if resolved, err := filepath.EvalSymlinks(executablePath); err == nil {
+		normalized = normalizePath(resolved)
+	}
 	home := normalizePath(homeDir)
 
 	if strings.Contains(normalized, "/homebrew/cellar/") || strings.Contains(normalized, "/cellar/grounds/") {
-		return InstallInfo{Method: InstallHomebrew, UpdateCommand: "brew upgrade groundsgg/tap/grounds"}
+		return InstallInfo{Method: InstallHomebrew, UpdateCommand: homebrewFormulaUpdateCommand}
+	}
+
+	if strings.Contains(normalized, "/caskroom/grounds/") {
+		return InstallInfo{Method: InstallHomebrew, UpdateCommand: homebrewCaskUpdateCommand}
 	}
 
 	if strings.Contains(normalized, "/scoop/apps/grounds/") {
