@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.16](https://github.com/groundsgg/grounds-cli/compare/v0.1.15...v0.1.16) (2026-05-06)
+
+
+### Bug Fixes
+
+* detect homebrew cask installs ([#42](https://github.com/groundsgg/grounds-cli/issues/42)) ([a2ec0a1](https://github.com/groundsgg/grounds-cli/commit/a2ec0a1a76da77d002c9408dab49ae72245e4acc))
+
 ## [0.1.15](https://github.com/groundsgg/grounds-cli/compare/v0.1.14...v0.1.15) (2026-05-06)
 
 
