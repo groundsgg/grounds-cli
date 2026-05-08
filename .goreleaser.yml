@@ -42,7 +42,7 @@ nfpms:
     vendor: Grounds
     homepage: https://grounds.gg
     maintainer: Grounds <ops@grounds.gg>
-    description: Grounds Internal Developer Platform CLI
+    description: Grounds Developer Platform CLI
     license: Apache-2.0
     formats: [deb, rpm]
     bindir: /usr/bin
@@ -60,7 +60,7 @@ homebrew_casks:
     url:
       verified: github.com/groundsgg/grounds-cli
     homepage: https://grounds.gg
-    description: Grounds Internal Developer Platform CLI
+    description: Grounds Developer Platform CLI
     license: Apache-2.0
     hooks:
       post:
@@ -75,7 +75,7 @@ scoops:
       name: scoop-bucket
       token: "{{ .Env.HOMEBREW_TAP_PAT }}"
     homepage: https://grounds.gg
-    description: Grounds Internal Developer Platform CLI
+    description: Grounds Developer Platform CLI
     license: Apache-2.0
 
 release:
