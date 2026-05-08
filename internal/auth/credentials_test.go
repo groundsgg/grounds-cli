@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/zalando/go-keyring"
 )
 
 func TestRoundtrip(t *testing.T) {
@@ -103,6 +105,58 @@ func TestRefreshExpiryFromSeconds_finite(t *testing.T) {
 	}
 	if got.Before(time.Now()) {
 		t.Error("seconds=60 should produce an expiry in the future")
+	}
+}
+
+// TestSaveDualWritesKeyringAndFile pins the contract with grounds-push's
+// CredentialResolver: every Save() must leave the JSON file in sync
+// with the keyring, even when the keyring write succeeds. Without this
+// the Gradle plugin sees "no credentials" on macOS even right after
+// `grounds login` (the bug the dual-write was added to fix).
+func TestSaveDualWritesKeyringAndFile(t *testing.T) {
+	keyring.MockInit()
+	defer keyring.Delete(keyringService, keyringKey)
+
+	dir := t.TempDir()
+	s := &store{configDir: dir}
+	c := &Credentials{
+		AccessToken: "at", RefreshToken: "rt",
+		ExpiresAt: time.Now().Add(5 * time.Minute).Truncate(time.Second),
+	}
+	if err := s.Save(c); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	// Keyring side
+	blob, err := keyring.Get(keyringService, keyringKey)
+	if err != nil {
+		t.Fatalf("keyring not populated: %v", err)
+	}
+	if !strings.Contains(blob, `"accessToken": "at"`) {
+		t.Errorf("keyring blob missing access token: %s", blob)
+	}
+
+	// File side
+	path := filepath.Join(dir, fileName)
+	fileBlob, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("file not populated: %v", err)
+	}
+	if !strings.Contains(string(fileBlob), `"accessToken": "at"`) {
+		t.Errorf("file blob missing access token: %s", fileBlob)
+	}
+
+	// Both must parse to the same struct.
+	fromKeyring, err := ParseCredentials([]byte(blob))
+	if err != nil {
+		t.Fatalf("parse keyring: %v", err)
+	}
+	fromFile, err := ParseCredentials(fileBlob)
+	if err != nil {
+		t.Fatalf("parse file: %v", err)
+	}
+	if fromKeyring.AccessToken != fromFile.AccessToken {
+		t.Errorf("keyring/file diverged: %q vs %q", fromKeyring.AccessToken, fromFile.AccessToken)
 	}
 }
 
