@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.17](https://github.com/groundsgg/grounds-cli/compare/v0.1.16...v0.1.17) (2026-05-08)
+
+
+### Bug Fixes
+
+* **auth:** dual-write credentials to keyring AND file ([#44](https://github.com/groundsgg/grounds-cli/issues/44)) ([c0142ea](https://github.com/groundsgg/grounds-cli/commit/c0142ea02d0c2951e9d35610fb067afb05d2503d))
+
 ## [0.1.16](https://github.com/groundsgg/grounds-cli/compare/v0.1.15...v0.1.16) (2026-05-06)
 
 
