@@ -1,6 +1,6 @@
 # grounds CLI
 
-Drives the Grounds Internal Developer Platform from your terminal.
+Drives the Grounds Developer Platform from your terminal.
 
 ## Install
 
