@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.18](https://github.com/groundsgg/grounds-cli/compare/v0.1.17...v0.1.18) (2026-05-09)
+
+
+### Features
+
+* **init:** select base images from catalog ([#47](https://github.com/groundsgg/grounds-cli/issues/47)) ([b2cc06c](https://github.com/groundsgg/grounds-cli/commit/b2cc06cb34f80bfe518b3f0bd0cfd006d60a7149))
+
 ## [0.1.17](https://github.com/groundsgg/grounds-cli/compare/v0.1.16...v0.1.17) (2026-05-08)
 
 
