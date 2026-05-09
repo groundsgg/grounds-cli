@@ -38,6 +38,8 @@ grounds cluster status                 # observe namespace
 grounds logs <pushId> --follow         # tail logs
 ```
 
+`grounds init` loads base-image choices from Forge's runtime catalog and falls back to built-in defaults when the API is unavailable.
+
 ## Commands
 
 | Command                                     | What                                         |
