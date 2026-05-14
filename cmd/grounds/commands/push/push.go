@@ -92,6 +92,8 @@ image moved under a stable tag, or to re-observe the build flow.`,
 				plan, err := internalworkspace.Resolve(ctx, manifestPath, workspaceConfig, internalworkspace.ResolveOptions{
 					LocalIDs:  local,
 					WithLocal: withLocal,
+					Stdout:    cmd.OutOrStdout(),
+					Stderr:    cmd.ErrOrStderr(),
 				})
 				if err != nil {
 					return err
@@ -140,7 +142,7 @@ func renderBundleSources(out io.Writer, plan *internalworkspace.Plan) {
 		}
 		rows = append(rows, []any{source.ID, source.Variant, source.Effective, value})
 	}
-	render.Table(out, []string{"ID", "Variant", "Source", "Value"}, rows)
+	render.Table(out, []string{"ID", "Variant", "Effective", "Value"}, rows)
 }
 
 func authRefreshError(err error) error {

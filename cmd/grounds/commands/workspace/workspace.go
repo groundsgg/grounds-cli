@@ -194,13 +194,22 @@ func newScan() *cobra.Command {
 			if cfg.Repos == nil {
 				cfg.Repos = map[string]internalworkspace.Repo{}
 			}
+			skipped := 0
 			for id, repo := range proposed.Repos {
+				if _, exists := cfg.Repos[id]; exists {
+					skipped++
+					continue
+				}
 				cfg.Repos[id] = repo
 			}
 			if err := internalworkspace.Save("", cfg); err != nil {
 				return err
 			}
-			render.StatusLine(out, render.StatusOK, "Workspace", "Saved scanned mappings")
+			summary := "Saved scanned mappings"
+			if skipped > 0 {
+				summary = fmt.Sprintf("%s (skipped existing=%d)", summary, skipped)
+			}
+			render.StatusLine(out, render.StatusOK, "Workspace", summary)
 			return nil
 		},
 	}

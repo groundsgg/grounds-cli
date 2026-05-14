@@ -6,9 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -18,6 +20,8 @@ import (
 type ResolveOptions struct {
 	LocalIDs  []string
 	WithLocal bool
+	Stdout    io.Writer
+	Stderr    io.Writer
 }
 
 type Plan struct {
@@ -101,7 +105,7 @@ func Resolve(ctx context.Context, manifestPath string, cfg *Config, opts Resolve
 			if variant == "" {
 				variant = plugin.Variant
 			}
-			local, err := resolveLocal(ctx, plugin, variant, entry)
+			local, err := resolveLocal(ctx, plugin, variant, entry, opts.Stdout, opts.Stderr)
 			if err != nil {
 				return nil, err
 			}
@@ -154,8 +158,15 @@ func loadManifestPlugins(path string) ([]manifestPlugin, error) {
 		switch node.Kind {
 		case yaml.ScalarNode:
 			source := strings.TrimSpace(node.Value)
+			if source == "" {
+				return nil, fmt.Errorf("plugin entry at index %d must not be empty", i)
+			}
+			id := inferIDFromSource(source)
+			if id == "" || id == "." {
+				return nil, fmt.Errorf("plugin entry at index %d has no inferable plugin id", i)
+			}
 			plugins = append(plugins, manifestPlugin{
-				ID:      inferIDFromSource(source),
+				ID:      id,
 				Source:  source,
 				Variant: "",
 			})
@@ -168,8 +179,16 @@ func loadManifestPlugins(path string) ([]manifestPlugin, error) {
 			if err := node.Decode(&plugin); err != nil {
 				return nil, err
 			}
+			plugin.Source = strings.TrimSpace(plugin.Source)
+			plugin.ID = strings.TrimSpace(plugin.ID)
+			if plugin.Source == "" {
+				return nil, fmt.Errorf("plugin entry at index %d source must not be empty", i)
+			}
 			if plugin.ID == "" {
 				plugin.ID = inferIDFromSource(plugin.Source)
+			}
+			if plugin.ID == "" || plugin.ID == "." {
+				return nil, fmt.Errorf("plugin entry at index %d has no inferable plugin id", i)
 			}
 			plugins = append(plugins, manifestPlugin{
 				ID:      plugin.ID,
@@ -223,12 +242,12 @@ type localResolution struct {
 	Effective EffectiveSource
 }
 
-func resolveLocal(ctx context.Context, plugin manifestPlugin, variant string, entry ResolvedEntry) (localResolution, error) {
+func resolveLocal(ctx context.Context, plugin manifestPlugin, variant string, entry ResolvedEntry, stdout, stderr io.Writer) (localResolution, error) {
 	if entry.Path == "" {
 		return localResolution{}, fmt.Errorf("local workspace entry for %q has no path", plugin.ID)
 	}
 	if entry.Build != "" {
-		if err := runBuild(ctx, entry.Path, entry.Build); err != nil {
+		if err := runBuild(ctx, entry.Path, entry.Build, stdout, stderr); err != nil {
 			return localResolution{}, fmt.Errorf("failed to build local plugin %q: %w", plugin.ID, err)
 		}
 	}
@@ -240,9 +259,11 @@ func resolveLocal(ctx context.Context, plugin manifestPlugin, variant string, en
 	if err != nil {
 		return localResolution{}, err
 	}
-	git, err := collectGitMetadata(ctx, entry.Path)
-	if err != nil {
-		return localResolution{}, err
+	var git *GitMetadata
+	if collectedGit, err := collectGitMetadata(ctx, entry.Path); err == nil {
+		git = collectedGit
+	} else if ctx.Err() != nil {
+		return localResolution{}, ctx.Err()
 	}
 	return localResolution{
 		LocalPath: localPath,
@@ -258,16 +279,29 @@ func resolveLocal(ctx context.Context, plugin manifestPlugin, variant string, en
 	}, nil
 }
 
-func runBuild(ctx context.Context, dir, build string) error {
-	parts := strings.Fields(build)
-	if len(parts) == 0 {
+func runBuild(ctx context.Context, dir, build string, stdout, stderr io.Writer) error {
+	if strings.TrimSpace(build) == "" {
 		return nil
 	}
-	cmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
+	cmd := shellCommand(ctx, build)
 	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = writerOrDefault(stdout, os.Stdout)
+	cmd.Stderr = writerOrDefault(stderr, os.Stderr)
 	return cmd.Run()
+}
+
+func shellCommand(ctx context.Context, command string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.CommandContext(ctx, "cmd", "/C", command)
+	}
+	return exec.CommandContext(ctx, "/bin/sh", "-c", command)
+}
+
+func writerOrDefault(w io.Writer, fallback io.Writer) io.Writer {
+	if w != nil {
+		return w
+	}
+	return fallback
 }
 
 func resolveArtifact(repoPath, pattern string) (string, error) {
@@ -287,20 +321,67 @@ func resolveArtifact(repoPath, pattern string) (string, error) {
 			jars = append(jars, match)
 		}
 	}
-	sort.Strings(jars)
-	if len(jars) != 1 {
-		return "", fmt.Errorf("expected exactly one .jar for %s, found %d", pattern, len(jars))
+	return pickPreferredArtifact(pattern, jars)
+}
+
+func pickPreferredArtifact(pattern string, jars []string) (string, error) {
+	if len(jars) == 0 {
+		return "", fmt.Errorf("expected at least one .jar for %s, found 0", pattern)
 	}
-	return jars[0], nil
+	candidates := make([]string, 0, len(jars))
+	for _, jar := range jars {
+		if !isAuxiliaryJar(jar) {
+			candidates = append(candidates, jar)
+		}
+	}
+	if len(candidates) == 0 {
+		candidates = jars
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		left, right := candidates[i], candidates[j]
+		leftPreference, rightPreference := artifactPreference(left), artifactPreference(right)
+		if leftPreference != rightPreference {
+			return leftPreference < rightPreference
+		}
+		leftInfo, leftErr := os.Stat(left)
+		rightInfo, rightErr := os.Stat(right)
+		if leftErr == nil && rightErr == nil && !leftInfo.ModTime().Equal(rightInfo.ModTime()) {
+			return leftInfo.ModTime().After(rightInfo.ModTime())
+		}
+		return left < right
+	})
+	return candidates[0], nil
+}
+
+func isAuxiliaryJar(path string) bool {
+	name := strings.ToLower(strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)))
+	for _, suffix := range []string{"-sources", "-source", "-javadoc", "-tests", "-test"} {
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func artifactPreference(path string) int {
+	name := strings.ToLower(strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)))
+	if strings.HasSuffix(name, "-all") || strings.Contains(name, "shadow") {
+		return 0
+	}
+	return 1
 }
 
 func sha256File(path string) (string, error) {
-	raw, err := os.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:]), nil
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func collectGitMetadata(ctx context.Context, path string) (*GitMetadata, error) {
