@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.19](https://github.com/groundsgg/grounds-cli/compare/v0.1.18...v0.1.19) (2026-05-14)
+
+
+### Features
+
+* add local plugin override workspace ([#49](https://github.com/groundsgg/grounds-cli/issues/49)) ([50149b0](https://github.com/groundsgg/grounds-cli/commit/50149b0fddccccbe84502db220116f737724526d))
+
 ## [0.1.18](https://github.com/groundsgg/grounds-cli/compare/v0.1.17...v0.1.18) (2026-05-09)
 
 
