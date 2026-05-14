@@ -3,6 +3,7 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -33,6 +34,40 @@ func TestSaveCreatesPrivateWorkspaceConfig(t *testing.T) {
 	}
 
 	if err := Save(path, cfg); err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("Stat(config dir) error = %v", err)
+	}
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Fatalf("config dir mode = %o, want 700", got)
+	}
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat(workspace.yaml) error = %v", err)
+	}
+	if got := fileInfo.Mode().Perm(); got != 0o600 {
+		t.Fatalf("workspace.yaml mode = %o, want 600", got)
+	}
+}
+
+func TestSaveTightensExistingWorkspaceConfigPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("permission bits are not enforced consistently on Windows")
+	}
+
+	dir := filepath.Join(t.TempDir(), "grounds")
+	path := filepath.Join(dir, "workspace.yaml")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll(config dir) error = %v", err)
+	}
+	if err := os.WriteFile(path, []byte("repos: {}\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(workspace.yaml) error = %v", err)
+	}
+
+	if err := Save(path, &Config{}); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
 
@@ -85,7 +120,7 @@ func TestEntryForVariantUsesVariantSpecificArtifact(t *testing.T) {
 	}
 }
 
-func TestEntryForVariantFallsBackToRootArtifact(t *testing.T) {
+func TestEntryForVariantUsesRootArtifactWhenNoVariantRequested(t *testing.T) {
 	cfg := &Config{Repos: map[string]Repo{
 		"plugin-permissions": {
 			Path:     "/repos/plugin-permissions",
@@ -95,11 +130,26 @@ func TestEntryForVariantFallsBackToRootArtifact(t *testing.T) {
 		},
 	}}
 
-	entry, ok := cfg.EntryForVariant("plugin-permissions", "paper")
+	entry, ok := cfg.EntryForVariant("plugin-permissions", "")
 	if !ok {
 		t.Fatal("EntryForVariant() ok = false, want true")
 	}
 	if entry.Artifact != "build/libs/*.jar" {
 		t.Fatalf("Artifact = %q", entry.Artifact)
+	}
+}
+
+func TestEntryForVariantRequiresRequestedVariant(t *testing.T) {
+	cfg := &Config{Repos: map[string]Repo{
+		"plugin-permissions": {
+			Path:     "/repos/plugin-permissions",
+			Artifact: "build/libs/*.jar",
+			Build:    "./gradlew build",
+			Enabled:  true,
+		},
+	}}
+
+	if entry, ok := cfg.EntryForVariant("plugin-permissions", "paper"); ok {
+		t.Fatalf("EntryForVariant() = %#v, true; want missing variant", entry)
 	}
 }

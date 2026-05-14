@@ -86,11 +86,17 @@ func Save(path string, cfg *Config) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
+	if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
 	raw, err := yaml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, raw, 0o600)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0o600)
 }
 
 func (c *Config) EntryForVariant(id, variant string) (ResolvedEntry, bool) {
@@ -110,6 +116,9 @@ func (c *Config) EntryForVariant(id, variant string) (ResolvedEntry, bool) {
 				Enabled:  v.Enabled,
 			}, true
 		}
+	}
+	if variant != "" {
+		return ResolvedEntry{}, false
 	}
 	if repo.Artifact == "" {
 		return ResolvedEntry{}, false

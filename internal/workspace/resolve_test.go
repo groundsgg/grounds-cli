@@ -149,6 +149,30 @@ func TestResolveWithLocalSelectsEnabledSingleVariantForLegacyPluginString(t *tes
 	}
 }
 
+func TestResolveRejectsMissingRequestedVariant(t *testing.T) {
+	app := t.TempDir()
+	writeFile(t, filepath.Join(app, "grounds.yaml"), `
+plugins:
+  - id: plugin-chat
+    variant: paper
+    source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar
+`)
+	repo := t.TempDir()
+	mkdirAll(t, filepath.Join(repo, "build", "libs"))
+	writeFile(t, filepath.Join(repo, "build", "libs", "plugin-chat.jar"), "jar")
+
+	_, err := Resolve(context.Background(), filepath.Join(app, "grounds.yaml"), &Config{Repos: map[string]Repo{
+		"plugin-chat": {
+			Path:     repo,
+			Artifact: "build/libs/*.jar",
+			Enabled:  true,
+		},
+	}}, ResolveOptions{LocalIDs: []string{"plugin-chat"}})
+	if err == nil || !strings.Contains(err.Error(), "variant") {
+		t.Fatalf("Resolve() error = %v, want missing variant error", err)
+	}
+}
+
 func TestResolveRejectsUnknownExplicitLocalID(t *testing.T) {
 	app := t.TempDir()
 	writeFile(t, filepath.Join(app, "grounds.yaml"), "plugins:\n  - github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar\n")
