@@ -36,6 +36,12 @@ func TestSaveCreatesPrivateWorkspaceConfig(t *testing.T) {
 	if err := Save(path, cfg); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("Stat(workspace.yaml) error = %v", err)
+		}
+		return
+	}
 
 	dirInfo, err := os.Stat(dir)
 	if err != nil {

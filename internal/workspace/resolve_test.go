@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -27,10 +28,7 @@ plugins:
 `)
 	repo := t.TempDir()
 	mkdirAll(t, filepath.Join(repo, "paper", "build", "libs"))
-	writeFile(t, filepath.Join(repo, "build.sh"), "#!/bin/sh\nprintf jar > paper/build/libs/plugin-chat.jar\n")
-	if err := os.Chmod(filepath.Join(repo, "build.sh"), 0o700); err != nil {
-		t.Fatalf("Chmod(build.sh) error = %v", err)
-	}
+	build := writePluginChatBuildScript(t, repo)
 	initGitRepo(t, repo)
 
 	cfg := &Config{Repos: map[string]Repo{
@@ -39,7 +37,7 @@ plugins:
 			Variants: map[string]Variant{
 				"paper": {
 					Artifact: "paper/build/libs/*.jar",
-					Build:    "./build.sh",
+					Build:    build,
 					Enabled:  false,
 				},
 			},
@@ -213,6 +211,19 @@ func localJarRepo(t *testing.T, jar string) string {
 	writeFile(t, filepath.Join(repo, "paper", "build", "libs", jar), "jar")
 	initGitRepo(t, repo)
 	return repo
+}
+
+func writePluginChatBuildScript(t *testing.T, repo string) string {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		writeFile(t, filepath.Join(repo, "build.bat"), "@echo off\r\necho jar> paper\\build\\libs\\plugin-chat.jar\r\n")
+		return "cmd /C build.bat"
+	}
+	writeFile(t, filepath.Join(repo, "build.sh"), "#!/bin/sh\nprintf jar > paper/build/libs/plugin-chat.jar\n")
+	if err := os.Chmod(filepath.Join(repo, "build.sh"), 0o700); err != nil {
+		t.Fatalf("Chmod(build.sh) error = %v", err)
+	}
+	return "./build.sh"
 }
 
 func initGitRepo(t *testing.T, dir string) {
