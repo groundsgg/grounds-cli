@@ -33,6 +33,7 @@ curl -sSL https://github.com/groundsgg/grounds-cli/releases/latest/download/inst
 ```bash
 grounds login                          # OAuth device flow
 grounds init                           # scaffold grounds.yaml
+grounds workspace scan ../ --yes       # discover sibling plugin repos
 grounds push                           # first push
 grounds cluster status                 # observe namespace
 grounds logs <pushId> --follow         # tail logs
@@ -49,6 +50,7 @@ grounds logs <pushId> --follow         # tail logs
 | `grounds completion <shell>`                | Shell completions                            |
 | `grounds doctor`                            | Diagnose env and warn about CLI updates      |
 | `grounds init`                              | Scaffold a grounds.yaml                      |
+| `grounds workspace scan/add/list/enable`    | Manage local plugin workspace overrides      |
 | `grounds cluster up/down/delete/status`     | Workspace lifecycle                          |
 | `grounds push [--target=dev]`               | Build + deploy via Gradle plugin             |
 | `grounds push retry/list`                   | Re-run / list pushes                         |
@@ -58,6 +60,19 @@ grounds logs <pushId> --follow         # tail logs
 ## Configuration
 
 `~/.config/grounds/config.yaml` (XDG-aware). Overridable via flags or env vars (`GROUNDS_API_URL`, `GROUNDS_TOKEN`, `GROUNDS_CONFIG_DIR`).
+
+Local plugin workspace overrides are stored in `~/.config/grounds/workspace.yaml`.
+Default `grounds push` still uses the plugin sources pinned in committed `grounds.yaml`.
+Use local plugin artifacts only when requested:
+
+```bash
+grounds workspace scan ../              # preview sibling plugin repos, then confirm
+grounds workspace scan ../ --yes        # write discovered mappings without prompting
+grounds workspace add plugin-chat ../plugin-chat --variant paper
+grounds push --local plugin-chat        # override one plugin from the workspace
+grounds push --local plugin-chat,plugin-permissions
+grounds push --with-local               # override every enabled workspace entry in grounds.yaml
+```
 
 ## Troubleshooting
 
