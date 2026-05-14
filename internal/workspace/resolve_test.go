@@ -312,7 +312,7 @@ func writePluginChatBuildScript(t *testing.T, repo string) string {
 
 func quotedArtifactBuildCommand() string {
 	if runtime.GOOS == "windows" {
-		return `echo jar> "paper\build\libs\plugin chat.jar"`
+		return `copy /Y NUL "paper\build\libs\plugin chat.jar"`
 	}
 	return `printf jar > "paper/build/libs/plugin chat.jar"`
 }
