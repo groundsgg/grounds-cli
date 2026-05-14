@@ -3,8 +3,10 @@ package push
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -13,6 +15,7 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
 	"github.com/groundsgg/grounds-cli/internal/render"
+	internalworkspace "github.com/groundsgg/grounds-cli/internal/workspace"
 )
 
 func NewPushCommand() *cobra.Command {
@@ -25,10 +28,12 @@ func NewPushCommand() *cobra.Command {
 func newPush() *cobra.Command {
 	var target string
 	var force bool
+	var local []string
+	var withLocal bool
 	cmd := &cobra.Command{
-		Use:     "push [--target=dev|staging] [--force]",
+		Use:     "push [--target=dev|staging] [--force] [--local=<id>[,<id>]] [--with-local]",
 		Short:   "Build via Gradle plugin and deploy to a target",
-		Example: "  grounds push\n  grounds push --target=staging\n  grounds push --force",
+		Example: "  grounds push\n  grounds push --target=staging\n  grounds push --force\n  grounds push --local=plugin-chat\n  grounds push --with-local",
 		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
 
 Targets:
@@ -78,6 +83,36 @@ image moved under a stable tag, or to re-observe the build flow.`,
 			if force {
 				args = append(args, "--force")
 			}
+			if withLocal || len(internalworkspace.NormalizeLocalIDs(local)) > 0 {
+				workspaceConfig, err := internalworkspace.Load("")
+				if err != nil {
+					return err
+				}
+				manifestPath := filepath.Join(filepath.Dir(wrapper), "grounds.yaml")
+				plan, err := internalworkspace.Resolve(ctx, manifestPath, workspaceConfig, internalworkspace.ResolveOptions{
+					LocalIDs:  local,
+					WithLocal: withLocal,
+					Stdout:    cmd.OutOrStdout(),
+					Stderr:    cmd.ErrOrStderr(),
+				})
+				if err != nil {
+					return err
+				}
+				renderBundleSources(cmd.OutOrStdout(), plan)
+				file, err := os.CreateTemp("", "grounds-resolved-plugins-*.json")
+				if err != nil {
+					return err
+				}
+				resolvedPath := file.Name()
+				if err := file.Close(); err != nil {
+					return err
+				}
+				defer os.Remove(resolvedPath)
+				if err := internalworkspace.WritePlanFile(resolvedPath, plan); err != nil {
+					return err
+				}
+				args = append(args, "--resolved-plugins-file="+resolvedPath)
+			}
 			return gradle.Run(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 		},
 	}
@@ -86,7 +121,28 @@ image moved under a stable tag, or to re-observe the build flow.`,
 		return []string{"dev", "staging"}, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().BoolVar(&force, "force", false, "skip contentHash dedup and force a fresh build")
+	cmd.Flags().StringArrayVar(&local, "local", nil, "use local workspace override for plugin id (repeatable, comma-separated)")
+	cmd.Flags().BoolVar(&withLocal, "with-local", false, "use all enabled local workspace overrides present in grounds.yaml")
 	return cmd
+}
+
+func renderBundleSources(out io.Writer, plan *internalworkspace.Plan) {
+	fmt.Fprintln(out, "Bundle sources:")
+	rows := make([][]any, 0, len(plan.EffectivePluginSources))
+	localPaths := map[string]string{}
+	for _, plugin := range plan.Plugins {
+		if plugin.LocalPath != "" {
+			localPaths[plugin.ID+"\x00"+plugin.Variant] = plugin.LocalPath
+		}
+	}
+	for _, source := range plan.EffectivePluginSources {
+		value := source.Source
+		if source.Effective == "local" {
+			value = localPaths[source.ID+"\x00"+source.Variant]
+		}
+		rows = append(rows, []any{source.ID, source.Variant, source.Effective, value})
+	}
+	render.Table(out, []string{"ID", "Variant", "Effective", "Value"}, rows)
 }
 
 func authRefreshError(err error) error {

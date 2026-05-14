@@ -12,6 +12,7 @@ import (
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/logs"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/preview"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/push"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/workspace"
 	"github.com/groundsgg/grounds-cli/internal/observability"
 )
 
@@ -38,6 +39,7 @@ func main() {
 	root.AddCommand(logs.NewLogsCommand())
 	root.AddCommand(push.NewPushCommand())
 	root.AddCommand(preview.NewPreviewCommand())
+	root.AddCommand(workspace.NewWorkspaceCommand())
 
 	// Execute() returns the error from the matched cobra subcommand.
 	// We pass the matched-command path (e.g. "grounds push") into the
