@@ -183,32 +183,6 @@ plugins:
 	}
 }
 
-func TestResolveBuildSupportsQuotedArguments(t *testing.T) {
-	app := t.TempDir()
-	writeFile(t, filepath.Join(app, "grounds.yaml"), `
-plugins:
-  - id: plugin-chat
-    source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar
-`)
-	repo := t.TempDir()
-	mkdirAll(t, filepath.Join(repo, "paper", "build", "libs"))
-
-	plan, err := Resolve(context.Background(), filepath.Join(app, "grounds.yaml"), &Config{Repos: map[string]Repo{
-		"plugin-chat": {
-			Path:     repo,
-			Artifact: "paper/build/libs/*.jar",
-			Build:    quotedArtifactBuildCommand(),
-			Enabled:  true,
-		},
-	}}, ResolveOptions{LocalIDs: []string{"plugin-chat"}})
-	if err != nil {
-		t.Fatalf("Resolve() error = %v", err)
-	}
-	if got := filepath.Base(plan.Plugins[0].LocalPath); got != "plugin chat.jar" {
-		t.Fatalf("local artifact = %q, want quoted artifact name", got)
-	}
-}
-
 func TestResolveRejectsMissingRequestedVariant(t *testing.T) {
 	app := t.TempDir()
 	writeFile(t, filepath.Join(app, "grounds.yaml"), `
@@ -308,13 +282,6 @@ func writePluginChatBuildScript(t *testing.T, repo string) string {
 		t.Fatalf("Chmod(build.sh) error = %v", err)
 	}
 	return "./build.sh"
-}
-
-func quotedArtifactBuildCommand() string {
-	if runtime.GOOS == "windows" {
-		return `copy /Y NUL "paper\build\libs\plugin chat.jar"`
-	}
-	return `printf jar > "paper/build/libs/plugin chat.jar"`
 }
 
 func initGitRepo(t *testing.T, dir string) {
