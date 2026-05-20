@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/groundsgg/grounds-cli/compare/v0.1.19...v0.2.0) (2026-05-20)
+
+
+### Features
+
+* **push:** pass app flavor selection ([#51](https://github.com/groundsgg/grounds-cli/issues/51)) ([2138009](https://github.com/groundsgg/grounds-cli/commit/21380097ffa714640cc3aeca7b2efdf2bf6ede52))
+
 ## [0.1.19](https://github.com/groundsgg/grounds-cli/compare/v0.1.18...v0.1.19) (2026-05-14)
 
 
