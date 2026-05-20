@@ -20,6 +20,7 @@ import (
 type ResolveOptions struct {
 	LocalIDs  []string
 	WithLocal bool
+	Flavor    string
 	Stdout    io.Writer
 	Stderr    io.Writer
 }
@@ -76,7 +77,7 @@ func NormalizeLocalIDs(values []string) []string {
 }
 
 func Resolve(ctx context.Context, manifestPath string, cfg *Config, opts ResolveOptions) (*Plan, error) {
-	plugins, err := loadManifestPlugins(manifestPath)
+	plugins, err := loadManifestPlugins(manifestPath, opts.Flavor)
 	if err != nil {
 		return nil, err
 	}
@@ -141,20 +142,53 @@ func WritePlanFile(path string, plan *Plan) error {
 	return os.WriteFile(path, raw, 0o600)
 }
 
-func loadManifestPlugins(path string) ([]manifestPlugin, error) {
+func loadManifestPlugins(path, flavor string) ([]manifestPlugin, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	var doc struct {
 		Plugins []yaml.Node `yaml:"plugins"`
+		Flavors map[string]struct {
+			Plugins []yaml.Node `yaml:"plugins"`
+		} `yaml:"flavors"`
 	}
 	if err := yaml.Unmarshal(raw, &doc); err != nil {
 		return nil, err
 	}
+	if len(doc.Flavors) > 0 {
+		if len(doc.Plugins) > 0 {
+			return nil, fmt.Errorf("grounds.yaml: found both top-level plugins and flavors; use only one")
+		}
+		return parseFlavorManifestPlugins(doc.Flavors, flavor)
+	}
+	return parsePluginNodes(doc.Plugins)
+}
+
+func parseFlavorManifestPlugins(flavors map[string]struct {
+	Plugins []yaml.Node `yaml:"plugins"`
+}, flavor string) ([]manifestPlugin, error) {
+	flavor = strings.TrimSpace(flavor)
+	keys := make([]string, 0, len(flavors))
+	for key := range flavors {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	available := strings.Join(keys, ", ")
+	if flavor == "" {
+		return nil, fmt.Errorf("grounds.yaml: flavor selection required (available=%s)", available)
+	}
+	selected, ok := flavors[flavor]
+	if !ok {
+		return nil, fmt.Errorf("grounds.yaml: unknown flavor %q (available=%s)", flavor, available)
+	}
+	return parsePluginNodes(selected.Plugins)
+}
+
+func parsePluginNodes(nodes []yaml.Node) ([]manifestPlugin, error) {
 	var plugins []manifestPlugin
-	for i := range doc.Plugins {
-		node := doc.Plugins[i]
+	for i := range nodes {
+		node := nodes[i]
 		switch node.Kind {
 		case yaml.ScalarNode:
 			source := strings.TrimSpace(node.Value)

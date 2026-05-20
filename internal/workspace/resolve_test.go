@@ -136,6 +136,103 @@ plugins:
 	}
 }
 
+func TestResolveUsesSelectedManifestFlavorPlugins(t *testing.T) {
+	app := t.TempDir()
+	writeFile(t, filepath.Join(app, "grounds.yaml"), `
+name: plugin-config
+flavors:
+  paper:
+    type: paper
+    baseImage: paper
+    plugins:
+      - id: plugin-chat
+        variant: paper
+        source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat-paper.jar
+  velocity:
+    type: velocity
+    baseImage: velocity
+    plugins:
+      - id: plugin-chat
+        variant: velocity
+        source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat-velocity.jar
+      - id: plugin-proxy
+        variant: velocity
+        source: github:groundsgg/plugin-proxy@v1.0.0:plugin-proxy.jar
+`)
+	repo := t.TempDir()
+	mkdirAll(t, filepath.Join(repo, "velocity", "build", "libs"))
+	writeFile(t, filepath.Join(repo, "velocity", "build", "libs", "plugin-chat.jar"), "jar")
+	initGitRepo(t, repo)
+
+	plan, err := Resolve(context.Background(), filepath.Join(app, "grounds.yaml"), &Config{Repos: map[string]Repo{
+		"plugin-chat": {
+			Path: repo,
+			Variants: map[string]Variant{
+				"velocity": {Artifact: "velocity/build/libs/*.jar", Enabled: true},
+			},
+		},
+	}}, ResolveOptions{
+		Flavor:    "velocity",
+		LocalIDs:  []string{"plugin-chat"},
+		WithLocal: true,
+	})
+	if err != nil {
+		t.Fatalf("Resolve() error = %v", err)
+	}
+	if len(plan.Plugins) != 2 {
+		t.Fatalf("Plugins len = %d, want 2", len(plan.Plugins))
+	}
+	if plan.Plugins[0].Variant != "velocity" || plan.Plugins[0].LocalPath == "" {
+		t.Fatalf("plugin-chat should use local velocity variant: %#v", plan.Plugins[0])
+	}
+	if plan.Plugins[1].Source != "github:groundsgg/plugin-proxy@v1.0.0:plugin-proxy.jar" {
+		t.Fatalf("second selected flavor plugin = %#v", plan.Plugins[1])
+	}
+}
+
+func TestResolveRequiresFlavorForFlavorManifest(t *testing.T) {
+	app := t.TempDir()
+	writeFile(t, filepath.Join(app, "grounds.yaml"), `
+name: plugin-config
+flavors:
+  paper:
+    type: paper
+    baseImage: paper
+    plugins:
+      - id: plugin-chat
+        source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar
+`)
+
+	_, err := Resolve(context.Background(), filepath.Join(app, "grounds.yaml"), &Config{}, ResolveOptions{WithLocal: true})
+	if err == nil || !strings.Contains(err.Error(), "flavor selection required") {
+		t.Fatalf("Resolve() error = %v, want flavor selection error", err)
+	}
+}
+
+func TestResolveRejectsManifestWithTopLevelPluginsAndFlavors(t *testing.T) {
+	app := t.TempDir()
+	writeFile(t, filepath.Join(app, "grounds.yaml"), `
+name: plugin-config
+plugins:
+  - github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar
+flavors:
+  paper:
+    type: paper
+    baseImage: paper
+    plugins:
+      - id: plugin-chat
+        source: github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar
+`)
+
+	_, err := Resolve(context.Background(), filepath.Join(app, "grounds.yaml"), &Config{}, ResolveOptions{})
+	if err == nil {
+		t.Fatal("Resolve() error = nil, want mixed plugins/flavors error")
+	}
+	if !strings.Contains(err.Error(), "grounds.yaml: found both top-level plugins and flavors") {
+		t.Fatalf("Resolve() error = %v, want prefixed mixed plugins/flavors error", err)
+	}
+}
+
 func TestResolveWithLocalSelectsEnabledSingleVariantForLegacyPluginString(t *testing.T) {
 	app := t.TempDir()
 	writeFile(t, filepath.Join(app, "grounds.yaml"), "plugins:\n  - github:groundsgg/plugin-chat@v1.2.3:plugin-chat.jar\n")

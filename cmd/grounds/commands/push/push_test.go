@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -67,6 +69,54 @@ func TestPushTargetCompletion(t *testing.T) {
 	}
 }
 
+func TestPushFlavorFlagIsForwardedToGradle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses a POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+	if err := os.WriteFile("grounds.yaml", []byte("name: plugin-config\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(grounds.yaml) error = %v", err)
+	}
+	argsPath := filepath.Join(dir, "args.txt")
+	wrapper := "#!/bin/sh\nprintf '%s\\n' \"$@\" > " + shellQuote(argsPath) + "\n"
+	if err := os.WriteFile("gradlew", []byte(wrapper), 0o755); err != nil {
+		t.Fatalf("WriteFile(gradlew) error = %v", err)
+	}
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+
+	cmd := newPush()
+	cmd.SetArgs([]string{"--flavor= velocity "})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	raw, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatalf("ReadFile(args) error = %v", err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, "groundsPush\n") || !strings.Contains(got, "--flavor=velocity\n") {
+		t.Fatalf("gradle args = %q, want groundsPush and --flavor=velocity", got)
+	}
+	if strings.Contains(got, "--flavor= velocity ") {
+		t.Fatalf("gradle args = %q, want normalized flavor value", got)
+	}
+}
+
 func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 	cmd := NewPushCommand()
 
@@ -87,6 +137,10 @@ func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 	if sub, _, err := cmd.Find([]string{"push"}); err == nil && sub.Name() == "push" && sub != cmd {
 		t.Fatalf("unexpected nested push subcommand found")
 	}
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
 }
 
 func TestPushRootRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {

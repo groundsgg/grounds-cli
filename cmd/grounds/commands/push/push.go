@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -27,13 +28,14 @@ func NewPushCommand() *cobra.Command {
 
 func newPush() *cobra.Command {
 	var target string
+	var flavor string
 	var force bool
 	var local []string
 	var withLocal bool
 	cmd := &cobra.Command{
-		Use:     "push [--target=dev|staging] [--force] [--local=<id>[,<id>]] [--with-local]",
+		Use:     "push [--target=dev|staging] [--flavor=<key>] [--force] [--local=<id>[,<id>]] [--with-local]",
 		Short:   "Build via Gradle plugin and deploy to a target",
-		Example: "  grounds push\n  grounds push --target=staging\n  grounds push --force\n  grounds push --local=plugin-chat\n  grounds push --with-local",
+		Example: "  grounds push\n  grounds push --flavor=velocity\n  grounds push --target=staging\n  grounds push --force\n  grounds push --local=plugin-chat\n  grounds push --with-local",
 		Long: `Build the current project with the grounds-push Gradle plugin and deploy it.
 
 Targets:
@@ -49,6 +51,7 @@ image moved under a stable tag, or to re-observe the build flow.`,
 			if target != "dev" && target != "staging" {
 				return fmt.Errorf("invalid --target %q: must be \"dev\" or \"staging\"", target)
 			}
+			flavor = strings.TrimSpace(flavor)
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
@@ -80,6 +83,9 @@ image moved under a stable tag, or to re-observe the build flow.`,
 			}
 
 			args := []string{"groundsPush", "--target=" + target}
+			if flavor != "" {
+				args = append(args, "--flavor="+flavor)
+			}
 			if force {
 				args = append(args, "--force")
 			}
@@ -92,6 +98,7 @@ image moved under a stable tag, or to re-observe the build flow.`,
 				plan, err := internalworkspace.Resolve(ctx, manifestPath, workspaceConfig, internalworkspace.ResolveOptions{
 					LocalIDs:  local,
 					WithLocal: withLocal,
+					Flavor:    flavor,
 					Stdout:    cmd.OutOrStdout(),
 					Stderr:    cmd.ErrOrStderr(),
 				})
@@ -119,6 +126,10 @@ image moved under a stable tag, or to re-observe the build flow.`,
 	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev (persistent personal ns) or staging (ephemeral preview env, 7d TTL)")
 	_ = cmd.RegisterFlagCompletionFunc("target", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 		return []string{"dev", "staging"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	cmd.Flags().StringVar(&flavor, "flavor", "", "app flavor from grounds.yaml flavors (for example paper or velocity)")
+	_ = cmd.RegisterFlagCompletionFunc("flavor", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return nil, cobra.ShellCompDirectiveNoFileComp
 	})
 	cmd.Flags().BoolVar(&force, "force", false, "skip contentHash dedup and force a fresh build")
 	cmd.Flags().StringArrayVar(&local, "local", nil, "use local workspace override for plugin id (repeatable, comma-separated)")
