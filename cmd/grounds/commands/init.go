@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -17,7 +18,7 @@ import (
 )
 
 type initFlags struct {
-	appName, type_, baseImage, jar string
+	appName, type_, baseImage, jar, flavor string
 }
 
 var loadInitBaseImageCatalog = func(ctx context.Context, cmd *cobra.Command) (*api.BaseImageCatalog, error) {
@@ -46,6 +47,12 @@ func NewInitCommand() *cobra.Command {
 				if err := validateBaseImageChoice(catalog, f.type_, f.baseImage); err != nil {
 					return err
 				}
+				if err := validateJarPath(f.jar); err != nil {
+					return err
+				}
+				if err := validateFlavorKey(f.flavor); err != nil {
+					return err
+				}
 				return writeGroundsYaml(cmd.OutOrStdout(), f)
 			}
 			firstStep := huh.NewForm(huh.NewGroup(
@@ -59,15 +66,19 @@ func NewInitCommand() *cobra.Command {
 			secondStep := huh.NewForm(huh.NewGroup(
 				huh.NewSelect[string]().Title("Base image").
 					Options(baseImageOptionsForType(catalog, f.type_)...).Value(&f.baseImage),
-				huh.NewInput().Title("JAR glob").Placeholder("build/libs/*.jar").Value(&f.jar),
+				huh.NewInput().Title("JAR path (optional)").Placeholder("build/libs/my-plugin.jar").Value(&f.jar),
+				huh.NewInput().Title("App flavor key (optional)").Placeholder("paper").Value(&f.flavor),
 			))
 			if err := secondStep.Run(); err != nil {
 				return err
 			}
-			if f.jar == "" {
-				f.jar = "build/libs/*.jar"
-			}
 			if err := validateBaseImageChoice(catalog, f.type_, f.baseImage); err != nil {
+				return err
+			}
+			if err := validateJarPath(f.jar); err != nil {
+				return err
+			}
+			if err := validateFlavorKey(f.flavor); err != nil {
 				return err
 			}
 			return writeGroundsYaml(cmd.OutOrStdout(), f)
@@ -76,7 +87,8 @@ func NewInitCommand() *cobra.Command {
 	cmd.Flags().StringVar(&f.appName, "app-name", "", "")
 	cmd.Flags().StringVar(&f.type_, "type", "", "gamemode | plugin-paper | plugin-velocity | service")
 	cmd.Flags().StringVar(&f.baseImage, "base-image", "", "base image catalog key, e.g. paper or paper@0.8.2")
-	cmd.Flags().StringVar(&f.jar, "jar", "build/libs/*.jar", "")
+	cmd.Flags().StringVar(&f.jar, "jar", "", "exact JAR path; omit for Gradle auto-detection")
+	cmd.Flags().StringVar(&f.flavor, "flavor", "", "app flavor key to scaffold under grounds.yaml flavors")
 	return cmd
 }
 
@@ -145,6 +157,25 @@ func validateBaseImageChoice(catalog *api.BaseImageCatalog, manifestType, baseIm
 	return fmt.Errorf("unknown baseImage %s for type %s", key, manifestType)
 }
 
+func validateJarPath(jar string) error {
+	if strings.ContainsAny(jar, "*?[") {
+		return fmt.Errorf("jar must be an exact JAR path; leave it empty for Gradle auto-detection")
+	}
+	return nil
+}
+
+var flavorKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{1,31}$`)
+
+func validateFlavorKey(flavor string) error {
+	if flavor == "" {
+		return nil
+	}
+	if !flavorKeyPattern.MatchString(flavor) {
+		return fmt.Errorf("flavor must match %s", flavorKeyPattern.String())
+	}
+	return nil
+}
+
 func writeGroundsYaml(out io.Writer, f *initFlags) error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -154,14 +185,37 @@ func writeGroundsYaml(out io.Writer, f *initFlags) error {
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("grounds.yaml already exists at %s", path)
 	}
-	body := fmt.Sprintf(
-		"name: %s\ntype: %s\nbaseImage: %s\njar: %s\n",
-		f.appName, f.type_, f.baseImage, f.jar,
-	)
+	body := renderGroundsYaml(f)
 	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
 		return err
 	}
 	render.StatusLine(out, render.StatusOK, "Init", "Wrote grounds.yaml")
-	render.DetailLine(out, render.StatusOK, "Next: run "+render.Command("grounds push")+".")
+	next := "Next: run " + render.Command("grounds push") + "."
+	if f.flavor != "" {
+		next = "Next: run " + render.Command("grounds push --flavor="+f.flavor) + "."
+	}
+	render.DetailLine(out, render.StatusOK, next)
 	return nil
+}
+
+func renderGroundsYaml(f *initFlags) string {
+	if f.flavor == "" {
+		body := fmt.Sprintf("name: %s\ntype: %s\nbaseImage: %s\n", f.appName, f.type_, f.baseImage)
+		if f.jar != "" {
+			body += fmt.Sprintf("jar: %s\n", f.jar)
+		}
+		return body
+	}
+
+	body := fmt.Sprintf(
+		"name: %s\nflavors:\n  %s:\n    type: %s\n    baseImage: %s\n",
+		f.appName,
+		f.flavor,
+		f.type_,
+		f.baseImage,
+	)
+	if f.jar != "" {
+		body += fmt.Sprintf("    jar: %s\n", f.jar)
+	}
+	return body
 }
