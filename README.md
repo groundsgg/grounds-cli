@@ -33,13 +33,16 @@ curl -sSL https://github.com/groundsgg/grounds-cli/releases/latest/download/inst
 ```bash
 grounds login                          # OAuth device flow
 grounds init                           # scaffold grounds.yaml
+grounds init --app-name=plugin-config --type=plugin-paper --base-image=paper --flavor=paper
 grounds workspace scan ../ --yes       # discover sibling plugin repos
 grounds push                           # first push
+grounds push --flavor=paper            # push one app flavor from grounds.yaml
 grounds cluster status                 # observe namespace
 grounds logs <pushId> --follow         # tail logs
 ```
 
 `grounds init` loads base-image choices from Forge's runtime catalog and falls back to built-in defaults when the API is unavailable.
+Use `grounds init --flavor=<key>` to scaffold a flavor manifest while legacy top-level runtime fields remain valid.
 
 ## Commands
 
@@ -52,7 +55,7 @@ grounds logs <pushId> --follow         # tail logs
 | `grounds init`                                  | Scaffold a grounds.yaml                      |
 | `grounds workspace scan/add/list/enable/doctor` | Manage local plugin workspace overrides      |
 | `grounds cluster up/down/delete/status`         | Workspace lifecycle                          |
-| `grounds push [--target=dev]`                   | Build + deploy via Gradle plugin             |
+| `grounds push [--target=dev] [--flavor=<key>]`  | Build + deploy via Gradle plugin             |
 | `grounds push retry/list`                       | Re-run / list pushes                         |
 | `grounds logs <pushId> [--follow]`              | Stream logs                                  |
 | `grounds logs deployment <name> [--follow]`     | Stream deployment logs                       |
@@ -73,6 +76,21 @@ grounds push --local plugin-chat        # override one plugin from the workspace
 grounds push --local plugin-chat,plugin-permissions
 grounds push --with-local               # override every enabled workspace entry in grounds.yaml
 ```
+
+Flavor manifests keep runtime fields under `flavors.<key>`:
+
+```yaml
+name: plugin-config
+flavors:
+  paper:
+    type: plugin-paper
+    baseImage: paper
+  velocity:
+    type: plugin-velocity
+    baseImage: velocity
+```
+
+Use `grounds push --flavor=paper` or `grounds push --flavor=velocity` to select one. When `jar` is omitted, the Gradle plugin uses its existing artifact detection.
 
 ## Troubleshooting
 
