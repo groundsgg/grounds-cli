@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/groundsgg/grounds-cli/compare/v0.2.0...v0.3.0) (2026-05-21)
+
+
+### Features
+
+* **init:** scaffold app flavor manifests ([#54](https://github.com/groundsgg/grounds-cli/issues/54)) ([4a657e2](https://github.com/groundsgg/grounds-cli/commit/4a657e2854f3891449801e9aa4666db8b75a3a68))
+
 ## [0.2.0](https://github.com/groundsgg/grounds-cli/compare/v0.1.19...v0.2.0) (2026-05-20)
 
 
