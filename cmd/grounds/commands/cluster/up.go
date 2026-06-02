@@ -2,8 +2,11 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -55,11 +58,22 @@ Profile is locked once a workspace exists. To switch, ` + "`grounds cluster dele
 				if err != nil {
 					return err
 				}
-				res, err := c.ClusterUpBundle(ctx, body)
+				w := cmd.OutOrStdout()
+				// forge runs the reconcile in the background and returns 202;
+				// poll GET /v1/cluster until it reaches a terminal state.
+				if _, err := c.ClusterUpBundle(ctx, body); err != nil {
+					return err
+				}
+				render.StatusLine(w, render.StatusOK, "Workspace",
+					fmt.Sprintf("provisioning bundle %s — this takes a few minutes…", body.Bundle))
+				final, err := waitForBundle(ctx, c, w)
 				if err != nil {
 					return err
 				}
-				renderBundleResult(cmd.OutOrStdout(), res)
+				renderBundleStatus(w, final)
+				if final.State == "failed" {
+					return fmt.Errorf("bundle provisioning failed")
+				}
 				return nil
 			}
 
@@ -110,18 +124,70 @@ func loadBundleRequest(bundleRef, overridePath string) (*api.BundleUpRequest, er
 	return body, nil
 }
 
-func renderBundleResult(w interface {
-	Write(p []byte) (int, error)
-}, res *api.BundleUpResult) {
+// waitForBundle polls GET /v1/cluster until the workspace reaches a terminal
+// state (active or failed), printing each state transition. It tolerates a
+// brief 404 right after the 202 while forge commits the workspace row.
+func waitForBundle(ctx context.Context, c *api.Client, w io.Writer) (*api.ClusterStatus, error) {
+	const (
+		interval = 5 * time.Second
+		overall  = 20 * time.Minute
+		rowGrace = 30 * time.Second
+	)
+	deadline := time.Now().Add(overall)
+	graceUntil := time.Now().Add(rowGrace)
+	lastState := ""
+	for {
+		s, err := c.GetCluster(ctx)
+		if err != nil {
+			var apiErr *api.Error
+			if errors.As(err, &apiErr) && apiErr.StatusCode == 404 && time.Now().Before(graceUntil) {
+				// workspace row not committed yet — keep waiting
+			} else {
+				return nil, err
+			}
+		} else {
+			if s.State != lastState {
+				render.DetailLine(w, render.StatusOK, "state: "+s.State)
+				lastState = s.State
+			}
+			switch s.State {
+			case "active", "failed":
+				return s, nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("timed out after %s waiting for the bundle (still %q); check `grounds cluster status`", overall, lastState)
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(interval):
+		}
+	}
+}
+
+func renderBundleStatus(w io.Writer, s *api.ClusterStatus) {
+	if s.State == "failed" {
+		render.StatusLine(w, render.StatusError, "Workspace", "bundle provisioning failed")
+		if s.FailureReason != "" {
+			render.DetailLine(w, render.StatusError, s.FailureReason)
+		}
+		return
+	}
 	status := render.StatusOK
-	summary := fmt.Sprintf("%s with bundle %s in namespace %s", res.State, res.BundleVersion, res.Namespace)
-	if len(res.Components.Failed) > 0 {
+	nFailed := 0
+	if s.BundleResult != nil {
+		nFailed = len(s.BundleResult.Failed)
+	}
+	if nFailed > 0 {
 		status = render.StatusWarn
 	}
-	render.StatusLine(w, status, "Workspace", summary)
-	render.DetailLine(w, status, fmt.Sprintf("Components: %d resolved, %d succeeded, %d failed",
-		res.Components.Resolved, len(res.Components.Succeeded), len(res.Components.Failed)))
-	for _, f := range res.Components.Failed {
-		render.DetailLine(w, render.StatusError, fmt.Sprintf("%s: %s", f.Name, f.Error))
+	render.StatusLine(w, status, "Workspace", fmt.Sprintf("active in namespace %s", s.Namespace))
+	if s.BundleResult != nil {
+		render.DetailLine(w, status, fmt.Sprintf("Components: %d succeeded, %d failed",
+			len(s.BundleResult.Succeeded), nFailed))
+		for _, f := range s.BundleResult.Failed {
+			render.DetailLine(w, render.StatusError, fmt.Sprintf("%s: %s", f.Name, f.Error))
+		}
 	}
 }
