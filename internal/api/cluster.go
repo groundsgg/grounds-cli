@@ -23,6 +23,21 @@ type ClusterStatus struct {
 	AutoDeleteAt     *time.Time         `json:"autoDeleteAt"`
 	Quota            map[string]string  `json:"quota"`
 	DeploymentsReady int                `json:"deploymentsReady"`
+	// platform-bundle async-provision surface (forge#299): the last apply's
+	// component breakdown and, when state=failed, the reconcile error.
+	BundleResult  *BundleResult `json:"bundleResult"`
+	FailureReason string        `json:"failureReason"`
+}
+
+// BundleResult is the { succeeded, failed } breakdown of a bundle apply,
+// surfaced on GET /v1/cluster so a poller can report the outcome of an
+// async (202-then-poll) `cluster up --bundle`.
+type BundleResult struct {
+	Succeeded []string `json:"succeeded"`
+	Failed    []struct {
+		Name  string `json:"name"`
+		Error string `json:"error"`
+	} `json:"failed"`
 }
 
 func (c *Client) GetCluster(ctx context.Context) (*ClusterStatus, error) {

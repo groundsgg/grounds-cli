@@ -95,29 +95,39 @@ func writeTempYAML(t *testing.T, content string) string {
 	return path
 }
 
-func TestRenderBundleResult(t *testing.T) {
+func TestRenderBundleStatus(t *testing.T) {
 	color.NoColor = true
 	defer func() { color.NoColor = false }()
 
-	res := &api.BundleUpResult{
-		State:         "active",
-		BundleVersion: "0.4.0",
-		Namespace:     "dev-lukas",
-	}
-	res.Components.Resolved = 2
-	res.Components.Succeeded = []string{"api"}
-	res.Components.Failed = append(res.Components.Failed, struct {
+	s := &api.ClusterStatus{State: "active", Namespace: "dev-lukas"}
+	s.BundleResult = &api.BundleResult{Succeeded: []string{"api"}}
+	s.BundleResult.Failed = append(s.BundleResult.Failed, struct {
 		Name  string `json:"name"`
 		Error string `json:"error"`
 	}{Name: "worker", Error: "image pull failed"})
 
 	var buf bytes.Buffer
-	renderBundleResult(&buf, res)
+	renderBundleStatus(&buf, s)
 
-	want := "[!] Workspace - active with bundle 0.4.0 in namespace dev-lukas\n" +
-		"    ! Components: 2 resolved, 1 succeeded, 1 failed\n" +
+	want := "[!] Workspace - active in namespace dev-lukas\n" +
+		"    ! Components: 1 succeeded, 1 failed\n" +
 		"    ✗ worker: image pull failed\n"
 	if got := buf.String(); got != want {
-		t.Fatalf("renderBundleResult output = %q, want %q", got, want)
+		t.Fatalf("renderBundleStatus output = %q, want %q", got, want)
+	}
+}
+
+func TestRenderBundleStatusFailed(t *testing.T) {
+	color.NoColor = true
+	defer func() { color.NoColor = false }()
+
+	s := &api.ClusterStatus{State: "failed", FailureReason: "vcluster kubeconfig secret did not appear"}
+	var buf bytes.Buffer
+	renderBundleStatus(&buf, s)
+
+	want := "[✗] Workspace - bundle provisioning failed\n" +
+		"    ✗ vcluster kubeconfig secret did not appear\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("renderBundleStatus(failed) output = %q, want %q", got, want)
 	}
 }
