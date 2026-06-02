@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/groundsgg/grounds-cli/compare/v0.3.0...v0.4.0) (2026-06-02)
+
+
+### Features
+
+* **cluster:** poll GET /v1/cluster after the bundle 202 ([#56](https://github.com/groundsgg/grounds-cli/issues/56)) ([8fb985c](https://github.com/groundsgg/grounds-cli/commit/8fb985c15c0cb04d373b267c7ea3e89f2f0dcd5d))
+
 ## [0.3.0](https://github.com/groundsgg/grounds-cli/compare/v0.2.0...v0.3.0) (2026-05-21)
 
 
