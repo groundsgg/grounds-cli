@@ -17,7 +17,7 @@ permissions:
 jobs:
   goreleaser:
     name: Publish packages
-    runs-on: ubuntu-latest
+    runs-on: arc-linux
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -50,7 +50,7 @@ jobs:
   glitchtip-release:
     name: Mark GlitchTip release
     needs: goreleaser
-    runs-on: ubuntu-latest
+    runs-on: arc-linux
     steps:
       - name: Checkout
         uses: actions/checkout@v6
