@@ -11,22 +11,23 @@ import (
 // ClusterStatus mirrors the GET /v1/cluster response shape from
 // groundsgg/grounds-platform docs/specs/2026-04-25-namespace-lifecycle.md §7.
 type ClusterStatus struct {
-	Namespace        string             `json:"namespace"`
-	State            string             `json:"state"`
-	Profile          string             `json:"profile"`
-	CreatedAt        time.Time          `json:"createdAt"`
-	LastActivityAt   time.Time          `json:"lastActivityAt"`
-	PausedAt         *time.Time         `json:"pausedAt"`
-	PauseScheduledAt *time.Time         `json:"pauseScheduledAt"`
-	WarningAt        *time.Time         `json:"warningAt"`
-	AutoPauseAt      *time.Time         `json:"autoPauseAt"`
-	AutoDeleteAt     *time.Time         `json:"autoDeleteAt"`
-	Quota            map[string]string  `json:"quota"`
-	DeploymentsReady int                `json:"deploymentsReady"`
+	Namespace        string            `json:"namespace"`
+	State            string            `json:"state"`
+	Profile          string            `json:"profile"`
+	CreatedAt        time.Time         `json:"createdAt"`
+	LastActivityAt   time.Time         `json:"lastActivityAt"`
+	PausedAt         *time.Time        `json:"pausedAt"`
+	PauseScheduledAt *time.Time        `json:"pauseScheduledAt"`
+	WarningAt        *time.Time        `json:"warningAt"`
+	AutoPauseAt      *time.Time        `json:"autoPauseAt"`
+	AutoDeleteAt     *time.Time        `json:"autoDeleteAt"`
+	Quota            map[string]string `json:"quota"`
+	DeploymentsReady int               `json:"deploymentsReady"`
 	// platform-bundle async-provision surface (forge#299): the last apply's
 	// component breakdown and, when state=failed, the reconcile error.
-	BundleResult  *BundleResult `json:"bundleResult"`
-	FailureReason string        `json:"failureReason"`
+	BundleResult   *BundleResult   `json:"bundleResult"`
+	BundleProgress *BundleProgress `json:"bundleProgress"`
+	FailureReason  string          `json:"failureReason"`
 }
 
 // BundleResult is the { succeeded, failed } breakdown of a bundle apply,
@@ -38,6 +39,20 @@ type BundleResult struct {
 		Name  string `json:"name"`
 		Error string `json:"error"`
 	} `json:"failed"`
+}
+
+type BundleProgress struct {
+	BundleRef            string `json:"bundleRef"`
+	Phase                string `json:"phase"`
+	Message              string `json:"message"`
+	CurrentComponent     string `json:"currentComponent"`
+	CurrentComponentType string `json:"currentComponentType"`
+	CurrentComponentMode string `json:"currentComponentMode"`
+	UpdatedAt            string `json:"updatedAt"`
+	ComponentsTotal      int    `json:"componentsTotal"`
+	ComponentsDone       int    `json:"componentsDone"`
+	ComponentsSucceeded  int    `json:"componentsSucceeded"`
+	ComponentsFailed     int    `json:"componentsFailed"`
 }
 
 func (c *Client) GetCluster(ctx context.Context) (*ClusterStatus, error) {
