@@ -32,7 +32,7 @@ func TestOnboarding_NonTTYBailsCleanly(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error in a non-TTY environment, got nil")
 	}
-	if !strings.Contains(err.Error(), "interaktives Terminal") {
+	if !strings.Contains(err.Error(), "interactive terminal") {
 		t.Fatalf("error = %q, want it to mention an interactive terminal", err.Error())
 	}
 }
