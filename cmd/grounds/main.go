@@ -10,6 +10,7 @@ import (
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/cluster"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/devspace"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/logs"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/onboarding"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/preview"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/push"
 	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/workspace"
@@ -33,6 +34,7 @@ func main() {
 	root.AddCommand(commands.NewLogoutCommand())
 	root.AddCommand(commands.NewDoctorCommand())
 	root.AddCommand(commands.NewInitCommand())
+	root.AddCommand(onboarding.NewOnboardingCommand())
 	root.AddCommand(bundle.NewBundleCommand())
 	root.AddCommand(cluster.NewClusterCommand())
 	root.AddCommand(devspace.NewDevspaceCommand())
