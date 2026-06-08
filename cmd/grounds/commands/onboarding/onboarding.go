@@ -33,13 +33,13 @@ func NewOnboardingCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "onboarding",
 		Aliases: []string{"onboard", "quickstart"},
-		Short:   "Interaktiver Einstieg: erklärt den Grounds-Dev-Flow Schritt für Schritt",
-		Long: `Ein geführter Walkthrough für neue Entwickler. Jeder Schritt wird erst
-erklärt und dann nach deiner Bestätigung ausgeführt:
+		Short:   "Interactive walkthrough that teaches the Grounds dev flow step by step",
+		Long: `A guided walkthrough for new developers. Each step is first explained,
+then run after you confirm:
 
-  Login  →  Workspace (Bundle)  →  App anlegen  →  push  →  spielen
+  Login  →  Workspace (Bundle)  →  Create app  →  push  →  play
 
-Überspringen ist überall möglich; jederzeit erneut aufrufbar.`,
+You can skip any step; re-runnable any time.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return run(cmd)
 		},
@@ -53,7 +53,7 @@ func run(cmd *cobra.Command) error {
 	// huh needs an interactive terminal; fail early with a clear message
 	// instead of a cryptic prompt error when piped or in CI.
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return fmt.Errorf("onboarding braucht ein interaktives Terminal (TTY)")
+		return fmt.Errorf("onboarding needs an interactive terminal (TTY)")
 	}
 
 	cfg, err := config.Load("")
@@ -63,13 +63,13 @@ func run(cmd *cobra.Command) error {
 
 	// ── Welcome ──────────────────────────────────────────────────────
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, render.Bold("👋 Willkommen bei Grounds"))
-	fmt.Fprintln(w, "Dieser Assistent bringt dich Schritt für Schritt zu einer laufenden App")
-	fmt.Fprintln(w, "und erklärt unterwegs, was passiert. Jeder Schritt wird erst erklärt,")
-	fmt.Fprintln(w, "dann nach deiner Bestätigung ausgeführt — Überspringen ist immer ok.")
+	fmt.Fprintln(w, render.Bold("👋 Welcome to Grounds"))
+	fmt.Fprintln(w, "This assistant walks you to a running app step by step and explains")
+	fmt.Fprintln(w, "what's happening along the way. Each step is explained first, then run")
+	fmt.Fprintln(w, "after you confirm — skipping is always fine.")
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  Weg: "+render.Bold("Login → Workspace → App anlegen → push → spielen"))
-	start, err := confirm("Los geht's?", "")
+	fmt.Fprintln(w, "  Path: "+render.Bold("Login → Workspace → Create app → push → play"))
+	start, err := confirm("Ready to start?", "")
 	if err != nil {
 		return err
 	}
@@ -79,19 +79,19 @@ func run(cmd *cobra.Command) error {
 
 	// ── 1/5 Login ────────────────────────────────────────────────────
 	section(w, 1, "Login",
-		"Grounds nutzt deinen Account (OAuth Device-Flow): du bekommst einen Code",
-		"+ Link, bestätigst im Browser, fertig. Das Token wird lokal gespeichert",
-		"und automatisch erneuert.")
+		"Grounds uses your account (OAuth device flow): you get a code + link,",
+		"confirm in the browser, done. The token is stored locally and refreshed",
+		"automatically.")
 	if loggedIn(cfg) {
-		render.StatusLine(w, render.StatusOK, "Login", "Du bist bereits eingeloggt")
+		render.StatusLine(w, render.StatusOK, "Login", "You're already logged in")
 	} else {
-		do, err := confirm("Jetzt einloggen?", "Öffnet den Device-Flow im Browser.")
+		do, err := confirm("Log in now?", "Opens the device flow in your browser.")
 		if err != nil {
 			return err
 		}
 		if !do {
 			render.DetailLine(w, render.StatusWarn,
-				"Ohne Login geht's nicht weiter — abgebrochen. Neustart mit "+render.Command("grounds onboarding"))
+				"Can't continue without login — aborted. Restart with "+render.Command("grounds onboarding"))
 			return nil
 		}
 		if err := runSub(commands.NewLoginCommand(), nil, w); err != nil {
@@ -100,92 +100,92 @@ func run(cmd *cobra.Command) error {
 	}
 
 	// ── 2/5 Workspace (Bundle) ───────────────────────────────────────
-	section(w, 2, "Dein Workspace",
-		"Ein Workspace ist dein isolierter Dev-Cluster — nur deiner. Wir ziehen ihn",
-		"als Bundle hoch: die komplette Platform-Umgebung (Velocity-Proxy, Player-,",
-		"Social-, NATS-Services …), damit dein Plugin sofort etwas zum Reden hat —",
-		"kein leeres Cluster. Einmalig ~2-3 min.")
+	section(w, 2, "Your workspace",
+		"A workspace is your isolated dev cluster — just yours. We spin it up as a",
+		"Bundle: the full platform environment (Velocity proxy, Player/Social/NATS",
+		"services …) so your plugin has something to talk to right away — not an",
+		"empty cluster. One-time ~2-3 min.")
 	ref := latestBundleRef(ctx, cfg)
 	do, err := confirm(
-		fmt.Sprintf("Bundle-Workspace »%s« jetzt hochziehen? (~2-3 min)", ref),
-		"Voll ausgestattete Platform-Umgebung für dein Plugin.")
+		fmt.Sprintf("Spin up bundle workspace %q now? (~2-3 min)", ref),
+		"A fully-equipped platform environment for your plugin.")
 	if err != nil {
 		return err
 	}
 	if do {
 		if err := runSub(cluster.NewClusterCommand(), []string{"up", "--bundle", ref}, w); err != nil {
-			render.StatusLine(w, render.StatusWarn, "Workspace", "Provisioning hatte ein Problem (Details oben)")
-			cont, _ := confirm("Trotzdem mit dem Onboarding weitermachen?", "")
+			render.StatusLine(w, render.StatusWarn, "Workspace", "Provisioning hit a problem (details above)")
+			cont, _ := confirm("Continue with the onboarding anyway?", "")
 			if !cont {
 				return nil
 			}
 		}
 	}
 
-	// ── 3/5 App anlegen ──────────────────────────────────────────────
-	section(w, 3, "Eine App anlegen",
-		"grounds.yaml beschreibt deine App(s): Typ (Paper-Plugin, Velocity, Gamemode,",
-		"Service …), Base-Image und Flavors. grounds init legt sie interaktiv an.")
+	// ── 3/5 Create app ───────────────────────────────────────────────
+	section(w, 3, "Create an app",
+		"grounds.yaml describes your app(s): type (Paper plugin, Velocity, gamemode,",
+		"service …), base image and flavors. grounds init scaffolds it interactively.")
 	if hasGroundsYaml() {
-		render.StatusLine(w, render.StatusOK, "Scaffold", "grounds.yaml existiert bereits — übersprungen")
+		render.StatusLine(w, render.StatusOK, "Scaffold", "grounds.yaml already exists — skipped")
 	} else {
-		do, err := confirm("grounds.yaml jetzt anlegen?", "Interaktiver Scaffold (Typ, Base-Image, Flavor).")
+		do, err := confirm("Scaffold grounds.yaml now?", "Interactive scaffold (type, base image, flavor).")
 		if err != nil {
 			return err
 		}
 		if do {
 			if err := runSub(commands.NewInitCommand(), nil, w); err != nil {
-				render.DetailLine(w, render.StatusWarn, "init übersprungen: "+err.Error())
+				render.DetailLine(w, render.StatusWarn, "init skipped: "+err.Error())
 			}
 		}
 	}
 
 	// ── 4/5 push ─────────────────────────────────────────────────────
-	section(w, 4, "Deployen mit push",
-		"grounds push baut deine App (via Gradle-Plugin) und deployt sie in deinen",
-		"Workspace — ein Kommando für Build + Deploy.")
-	if do2, err := confirm("Jetzt »grounds push«?", "Baut + deployt in deinen Workspace."); err != nil {
+	section(w, 4, "Deploy with push",
+		"grounds push builds your app (via the Gradle plugin) and deploys it to your",
+		"workspace — one command for build + deploy.")
+	if do2, err := confirm("Run grounds push now?", "Builds + deploys to your workspace."); err != nil {
 		return err
 	} else if do2 {
 		if err := runSub(push.NewPushCommand(), nil, w); err != nil {
-			render.DetailLine(w, render.StatusWarn, "push hatte ein Problem — siehe oben")
+			render.DetailLine(w, render.StatusWarn, "push hit a problem — see above")
 		}
 	}
 
-	// ── 5/5 Spielen & beobachten ─────────────────────────────────────
-	section(w, 5, "Spielen & beobachten",
-		"Verbinde dich mit dem Velocity-Proxy deines Workspaces (Minecraft-Client)",
-		"und schau live zu. Mit --target=staging bekommst du ephemere Preview-Envs.")
-	render.DetailLine(w, render.StatusOK, render.Command("grounds cluster status")+" — Workspace-Status & Endpunkte")
-	render.DetailLine(w, render.StatusOK, render.Command("grounds logs")+" — Live-Logs deiner App")
-	render.DetailLine(w, render.StatusOK, render.Command("grounds push --target=staging")+" — ephemere Preview-Env (7d TTL)")
+	// ── 5/5 Play & observe ───────────────────────────────────────────
+	section(w, 5, "Play & observe",
+		"Connect to your workspace's Velocity proxy (Minecraft client) and watch",
+		"live. Use --target=staging for ephemeral preview environments.")
+	render.DetailLine(w, render.StatusOK, render.Command("grounds cluster status")+" — workspace status & endpoints")
+	render.DetailLine(w, render.StatusOK, render.Command("grounds logs")+" — live logs of your app")
+	render.DetailLine(w, render.StatusOK, render.Command("grounds push --target=staging")+" — ephemeral preview env (7d TTL)")
 
 	// ── Done ─────────────────────────────────────────────────────────
 	fmt.Fprintln(w)
-	render.StatusLine(w, render.StatusOK, "Onboarding", "Geschafft 🎉")
-	render.DetailLine(w, render.StatusOK, "Jederzeit wiederholen mit "+render.Command("grounds onboarding"))
+	render.StatusLine(w, render.StatusOK, "Onboarding", "Done 🎉")
+	render.DetailLine(w, render.StatusOK, "Re-run any time with "+render.Command("grounds onboarding"))
 	return nil
 }
 
 // section prints a styled step header followed by the explanation lines.
 func section(w io.Writer, n int, title string, body ...string) {
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, render.Bold(fmt.Sprintf("▸ Schritt %d/%d — %s", n, totalSteps, title)))
+	fmt.Fprintln(w, render.Bold(fmt.Sprintf("▸ Step %d/%d — %s", n, totalSteps, title)))
 	for _, line := range body {
 		fmt.Fprintln(w, "  "+line)
 	}
 	fmt.Fprintln(w)
 }
 
-// confirm shows a Ja/Überspringen prompt and returns the choice.
+// confirm shows a Yes/Skip prompt and returns the choice.
 func confirm(title, desc string) (bool, error) {
 	var ok bool
 	form := huh.NewForm(huh.NewGroup(
 		huh.NewConfirm().
 			Title(title).
 			Description(desc).
-			Affirmative("Ja").
-			Negative("Überspringen").
+			Affirmative("Yes").
+			Negative("Skip").
 			Value(&ok),
 	))
 	if err := form.Run(); err != nil {
