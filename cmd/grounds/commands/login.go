@@ -59,6 +59,8 @@ func NewLoginCommand() *cobra.Command {
 			}
 
 			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Auth", "Logged in as "+loginSubject(preferred, email))
+			render.DetailLine(cmd.OutOrStdout(), render.StatusOK,
+				"New here? Run "+render.Command("grounds onboarding")+" for a guided setup.")
 			return nil
 		},
 	}
