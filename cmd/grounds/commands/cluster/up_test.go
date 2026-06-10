@@ -95,6 +95,31 @@ func writeTempYAML(t *testing.T, content string) string {
 	return path
 }
 
+func TestRenderBundleWaitProgressWritesSparseNonTTYProgressOnce(t *testing.T) {
+	color.NoColor = true
+	defer func() { color.NoColor = false }()
+
+	var buf bytes.Buffer
+	state := &bundleWaitRenderState{}
+	status := &api.ClusterStatus{
+		State: "creating",
+		BundleProgress: &api.BundleProgress{
+			Phase:            "deploying_components",
+			CurrentComponent: "plugin-config",
+			ComponentsTotal:  14,
+			ComponentsDone:   7,
+		},
+	}
+
+	renderBundleWaitProgress(&buf, state, status, 0, 0)
+	renderBundleWaitProgress(&buf, state, status, 0, 0)
+
+	want := "    • phase: deploying components 7/14: plugin-config\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("renderBundleWaitProgress output = %q, want %q", got, want)
+	}
+}
+
 func TestRenderBundleStatus(t *testing.T) {
 	color.NoColor = true
 	defer func() { color.NoColor = false }()

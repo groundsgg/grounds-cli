@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
 	"github.com/groundsgg/grounds-cli/internal/api"
@@ -133,9 +134,17 @@ func waitForBundle(ctx context.Context, c *api.Client, w io.Writer) (*api.Cluste
 		overall  = 20 * time.Minute
 		rowGrace = 30 * time.Second
 	)
-	deadline := time.Now().Add(overall)
-	graceUntil := time.Now().Add(rowGrace)
+	startedAt := time.Now()
+	deadline := startedAt.Add(overall)
+	graceUntil := startedAt.Add(rowGrace)
 	lastState := ""
+	lastSummary := ""
+	spinner := render.NewSpinnerLine(w)
+	defer spinner.Clear()
+	renderState := &bundleWaitRenderState{
+		spinner:     spinner,
+		interactive: bundleWaitInteractive(w),
+	}
 	for {
 		s, err := c.GetCluster(ctx)
 		if err != nil {
@@ -146,16 +155,19 @@ func waitForBundle(ctx context.Context, c *api.Client, w io.Writer) (*api.Cluste
 				return nil, err
 			}
 		} else {
-			if s.State != lastState {
-				render.DetailLine(w, render.StatusOK, "state: "+s.State)
-				lastState = s.State
-			}
+			renderBundleWaitProgress(w, renderState, s, time.Since(startedAt), interval)
+			lastState = renderState.lastState
+			lastSummary = renderState.lastSummary
 			switch s.State {
 			case "active", "failed":
+				spinner.Clear()
 				return s, nil
 			}
 		}
 		if time.Now().After(deadline) {
+			if lastSummary != "" {
+				return nil, fmt.Errorf("timed out after %s waiting for the bundle (still %q, phase: %s); check `grounds cluster status`", overall, lastState, lastSummary)
+			}
 			return nil, fmt.Errorf("timed out after %s waiting for the bundle (still %q); check `grounds cluster status`", overall, lastState)
 		}
 		select {
@@ -164,6 +176,44 @@ func waitForBundle(ctx context.Context, c *api.Client, w io.Writer) (*api.Cluste
 		case <-time.After(interval):
 		}
 	}
+}
+
+type bundleWaitRenderState struct {
+	spinner     *render.SpinnerLine
+	interactive bool
+	lastState   string
+	lastSummary string
+}
+
+func renderBundleWaitProgress(w io.Writer, state *bundleWaitRenderState, s *api.ClusterStatus, elapsed, nextPoll time.Duration) {
+	if state.spinner == nil {
+		state.spinner = render.NewSpinnerLine(w)
+	}
+	summary := render.BundleProgressSummary(s.BundleProgress)
+	if summary != "" {
+		line := "phase: " + summary
+		if state.interactive {
+			state.spinner.Update(line, elapsed, nextPoll)
+		} else if summary != state.lastSummary {
+			render.DetailLine(w, render.StatusOK, line)
+		}
+		state.lastState = s.State
+		state.lastSummary = summary
+		return
+	}
+
+	line := "state: " + s.State
+	if state.interactive {
+		state.spinner.Update(line, elapsed, nextPoll)
+	} else if s.State != state.lastState {
+		render.DetailLine(w, render.StatusOK, line)
+	}
+	state.lastState = s.State
+}
+
+func bundleWaitInteractive(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(file.Fd()))
 }
 
 func renderBundleStatus(w io.Writer, s *api.ClusterStatus) {

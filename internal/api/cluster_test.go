@@ -18,6 +18,19 @@ func TestGetCluster(t *testing.T) {
 			"state":            "active",
 			"profile":          "minigame",
 			"deploymentsReady": 2,
+			"bundleProgress": map[string]any{
+				"bundleRef":            "main",
+				"phase":                "deploying_components",
+				"message":              "Deploying bundle components",
+				"currentComponent":     "plugin-config",
+				"currentComponentType": "grpc-service",
+				"currentComponentMode": "gradle-local",
+				"componentsTotal":      14,
+				"componentsDone":       7,
+				"componentsSucceeded":  6,
+				"componentsFailed":     1,
+				"updatedAt":            "2026-06-07T20:45:12.000Z",
+			},
 		})
 	}))
 	defer srv.Close()
@@ -28,6 +41,15 @@ func TestGetCluster(t *testing.T) {
 	}
 	if s.Namespace != "user-test" || s.State != "active" || s.DeploymentsReady != 2 {
 		t.Errorf("status = %+v", s)
+	}
+	if s.BundleProgress == nil {
+		t.Fatal("BundleProgress = nil")
+	}
+	if s.BundleProgress.Phase != "deploying_components" ||
+		s.BundleProgress.CurrentComponent != "plugin-config" ||
+		s.BundleProgress.ComponentsTotal != 14 ||
+		s.BundleProgress.ComponentsDone != 7 {
+		t.Errorf("BundleProgress = %+v", s.BundleProgress)
 	}
 }
 
