@@ -129,53 +129,104 @@ func loadBundleRequest(bundleRef, overridePath string) (*api.BundleUpRequest, er
 // state (active or failed), printing each state transition. It tolerates a
 // brief 404 right after the 202 while forge commits the workspace row.
 func waitForBundle(ctx context.Context, c *api.Client, w io.Writer) (*api.ClusterStatus, error) {
+	return waitForBundleWithOptions(ctx, c.GetCluster, w, bundleWaitOptions{})
+}
+
+type bundleStatusGetter func(context.Context) (*api.ClusterStatus, error)
+
+type bundleWaitOptions struct {
+	pollInterval    time.Duration
+	spinnerInterval time.Duration
+	overall         time.Duration
+	rowGrace        time.Duration
+	interactive     *bool
+	spinner         *render.SpinnerLine
+}
+
+// waitForBundleWithOptions polls Forge at a coarse interval but refreshes the
+// interactive spinner between polls so the terminal does not look stalled.
+func waitForBundleWithOptions(ctx context.Context, getCluster bundleStatusGetter, w io.Writer, opts bundleWaitOptions) (*api.ClusterStatus, error) {
 	const (
-		interval = 5 * time.Second
-		overall  = 20 * time.Minute
-		rowGrace = 30 * time.Second
+		defaultPollInterval    = 5 * time.Second
+		defaultSpinnerInterval = 100 * time.Millisecond
+		defaultOverall         = 20 * time.Minute
+		defaultRowGrace        = 30 * time.Second
 	)
+	interval := durationOrDefault(opts.pollInterval, defaultPollInterval)
+	spinnerInterval := durationOrDefault(opts.spinnerInterval, defaultSpinnerInterval)
+	overall := durationOrDefault(opts.overall, defaultOverall)
+	rowGrace := durationOrDefault(opts.rowGrace, defaultRowGrace)
 	startedAt := time.Now()
 	deadline := startedAt.Add(overall)
 	graceUntil := startedAt.Add(rowGrace)
 	lastState := ""
 	lastSummary := ""
-	spinner := render.NewSpinnerLine(w)
+	spinner := opts.spinner
+	if spinner == nil {
+		spinner = render.NewSpinnerLine(w)
+	}
 	defer spinner.Clear()
+	interactive := bundleWaitInteractive(w)
+	if opts.interactive != nil {
+		interactive = *opts.interactive
+	}
 	renderState := &bundleWaitRenderState{
 		spinner:     spinner,
-		interactive: bundleWaitInteractive(w),
+		interactive: interactive,
 	}
+	var lastStatus *api.ClusterStatus
+	nextPollAt := startedAt
 	for {
-		s, err := c.GetCluster(ctx)
-		if err != nil {
-			var apiErr *api.Error
-			if errors.As(err, &apiErr) && apiErr.StatusCode == 404 && time.Now().Before(graceUntil) {
-				// workspace row not committed yet — keep waiting
+		now := time.Now()
+		if !nextPollAt.After(now) {
+			s, err := getCluster(ctx)
+			if err != nil {
+				var apiErr *api.Error
+				if errors.As(err, &apiErr) && apiErr.StatusCode == 404 && now.Before(graceUntil) {
+					// workspace row not committed yet — keep waiting
+				} else {
+					return nil, err
+				}
 			} else {
-				return nil, err
+				lastStatus = s
+				renderBundleWaitProgress(w, renderState, s, time.Since(startedAt), interval)
+				lastState = renderState.lastState
+				lastSummary = renderState.lastSummary
+				switch s.State {
+				case "active", "failed":
+					spinner.Clear()
+					return s, nil
+				}
 			}
-		} else {
-			renderBundleWaitProgress(w, renderState, s, time.Since(startedAt), interval)
-			lastState = renderState.lastState
-			lastSummary = renderState.lastSummary
-			switch s.State {
-			case "active", "failed":
-				spinner.Clear()
-				return s, nil
-			}
+			nextPollAt = time.Now().Add(interval)
+			continue
 		}
-		if time.Now().After(deadline) {
+		if now.After(deadline) {
 			if lastSummary != "" {
 				return nil, fmt.Errorf("timed out after %s waiting for the bundle (still %q, phase: %s); check `grounds cluster status`", overall, lastState, lastSummary)
 			}
 			return nil, fmt.Errorf("timed out after %s waiting for the bundle (still %q); check `grounds cluster status`", overall, lastState)
 		}
+		wait := time.Until(nextPollAt)
+		if renderState.interactive && lastStatus != nil && wait > spinnerInterval {
+			wait = spinnerInterval
+		}
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
-		case <-time.After(interval):
+		case <-time.After(wait):
+			if renderState.interactive && lastStatus != nil && time.Now().Before(nextPollAt) {
+				renderBundleWaitProgress(w, renderState, lastStatus, time.Since(startedAt), time.Until(nextPollAt))
+			}
 		}
 	}
+}
+
+func durationOrDefault(value, fallback time.Duration) time.Duration {
+	if value > 0 {
+		return value
+	}
+	return fallback
 }
 
 type bundleWaitRenderState struct {

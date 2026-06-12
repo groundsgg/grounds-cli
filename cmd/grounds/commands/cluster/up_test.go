@@ -2,13 +2,17 @@ package cluster
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/fatih/color"
 
 	"github.com/groundsgg/grounds-cli/internal/api"
+	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
 func TestLoadBundleRequest(t *testing.T) {
@@ -117,6 +121,51 @@ func TestRenderBundleWaitProgressWritesSparseNonTTYProgressOnce(t *testing.T) {
 	want := "    • phase: deploying components 7/14: plugin-config\n"
 	if got := buf.String(); got != want {
 		t.Fatalf("renderBundleWaitProgress output = %q, want %q", got, want)
+	}
+}
+
+func TestWaitForBundleRefreshesInteractiveSpinnerBetweenPolls(t *testing.T) {
+	color.NoColor = true
+	defer func() { color.NoColor = false }()
+
+	var buf bytes.Buffer
+	calls := 0
+	getCluster := func(context.Context) (*api.ClusterStatus, error) {
+		calls++
+		if calls == 1 {
+			return &api.ClusterStatus{
+				State: "creating",
+				BundleProgress: &api.BundleProgress{
+					Phase:            "deploying_components",
+					CurrentComponent: "plugin-config",
+					ComponentsTotal:  14,
+					ComponentsDone:   7,
+				},
+			}, nil
+		}
+		return &api.ClusterStatus{State: "active"}, nil
+	}
+	interactive := true
+
+	final, err := waitForBundleWithOptions(context.Background(), getCluster, &buf, bundleWaitOptions{
+		pollInterval:    50 * time.Millisecond,
+		spinnerInterval: 10 * time.Millisecond,
+		overall:         time.Second,
+		rowGrace:        30 * time.Millisecond,
+		interactive:     &interactive,
+		spinner:         render.NewSpinnerLineForTerminal(&buf, true, 120),
+	})
+	if err != nil {
+		t.Fatalf("waitForBundleWithOptions returned error: %v", err)
+	}
+	if final.State != "active" {
+		t.Fatalf("final state = %q, want active", final.State)
+	}
+	if calls != 2 {
+		t.Fatalf("GetCluster calls = %d, want 2", calls)
+	}
+	if got := strings.Count(buf.String(), "phase: deploying components 7/14: plugin-config"); got < 2 {
+		t.Fatalf("spinner redraws = %d, want at least 2; output = %q", got, buf.String())
 	}
 }
 
