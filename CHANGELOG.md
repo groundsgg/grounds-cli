@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/groundsgg/grounds-cli/compare/v0.4.0...v0.5.0) (2026-06-10)
+
+
+### Features
+
+* **cluster:** show bundle provisioning progress ([#60](https://github.com/groundsgg/grounds-cli/issues/60)) ([3e36386](https://github.com/groundsgg/grounds-cli/commit/3e363868705b662e284d802b0b96a9fd180d9f25))
+* **onboarding:** add interactive walkthrough command ([#59](https://github.com/groundsgg/grounds-cli/issues/59)) ([07b9a6c](https://github.com/groundsgg/grounds-cli/commit/07b9a6cc402382b7a223a16da806502c2f191d4d))
+* **onboarding:** nudge grounds onboarding after login ([#63](https://github.com/groundsgg/grounds-cli/issues/63)) ([bfb843b](https://github.com/groundsgg/grounds-cli/commit/bfb843b7f986c7081a44f6c6d4064b149e458d4a))
+
+
+### Bug Fixes
+
+* **onboarding:** use English copy ([#62](https://github.com/groundsgg/grounds-cli/issues/62)) ([e3c77f5](https://github.com/groundsgg/grounds-cli/commit/e3c77f5e94bdc432d87cae6f9cd434afc3630c8e))
+
 ## [0.4.0](https://github.com/groundsgg/grounds-cli/compare/v0.3.0...v0.4.0) (2026-06-02)
 
 
