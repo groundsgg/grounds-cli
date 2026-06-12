@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/groundsgg/grounds-cli/compare/v0.5.0...v0.5.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* **cluster:** refresh bundle spinner between polls ([#64](https://github.com/groundsgg/grounds-cli/issues/64)) ([61c84f9](https://github.com/groundsgg/grounds-cli/commit/61c84f9f57c27eee36d57380664f96ae0f3591e0))
+
 ## [0.5.0](https://github.com/groundsgg/grounds-cli/compare/v0.4.0...v0.5.0) (2026-06-10)
 
 
