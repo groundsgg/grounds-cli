@@ -27,6 +27,8 @@ type Variant struct {
 	Artifact string `yaml:"artifact,omitempty"`
 	Build    string `yaml:"build,omitempty"`
 	Enabled  bool   `yaml:"enabled"`
+	Module   string `yaml:"module,omitempty"`
+	Project  string `yaml:"project,omitempty"`
 }
 
 type ResolvedEntry struct {
@@ -34,6 +36,8 @@ type ResolvedEntry struct {
 	Artifact string
 	Build    string
 	Enabled  bool
+	Module   string
+	Project  string
 }
 
 func DefaultPath() (string, error) {
@@ -114,6 +118,8 @@ func (c *Config) EntryForVariant(id, variant string) (ResolvedEntry, bool) {
 				Artifact: firstNonEmpty(v.Artifact, repo.Artifact),
 				Build:    firstNonEmpty(v.Build, repo.Build),
 				Enabled:  v.Enabled,
+				Module:   v.Module,
+				Project:  v.Project,
 			}, true
 		}
 	}
