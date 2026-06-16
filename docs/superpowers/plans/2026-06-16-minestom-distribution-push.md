@@ -4,7 +4,7 @@
 
 **Goal:** Add a `grounds push --flavor=minestom --with-local` path that builds a Gradle application distribution with local module overrides and uploads it to Forge as a Minestom server image input.
 
-**Architecture:** This is a coordinated vertical slice across Forge and the CLI. Forge receives first-class `minestom-server` support so it can accept tar/gzip distribution uploads and deploy them as Minecraft workloads. The CLI detects `type: minestom-server` flavors, generates a temporary Gradle composite init script from `workspace.yaml`, builds the configured distribution artifact, and uploads it directly to Forge's existing multipart `/v1/pushes` endpoint.
+**Architecture:** This is a coordinated vertical slice across Forge and the CLI. Forge receives first-class `minestom-server` support so it can accept normalized gzip distribution bundles and deploy them as Minecraft workloads. The CLI detects `type: minestom-server` flavors, generates a temporary Gradle composite init script from `workspace.yaml`, builds the configured Gradle distribution artifact, normalizes it into Forge's `app/` bundle layout, and uploads it directly to Forge's existing multipart `/v1/pushes` endpoint.
 
 **Tech Stack:** Go 1.26, Cobra, Gradle wrapper invocation, YAML parsing, multipart HTTP uploads, TypeScript, Fastify, Zod, Vitest, Prisma mocks.
 
@@ -18,10 +18,10 @@
 - `grounds-forge/src/buildrunner/templates.ts`: add Dockerfile templates for Minestom distributions.
 - `grounds-forge/src/workloads/types.ts`: make `minestom-server` a Minecraft workload with port 25565 defaults.
 - `grounds-forge/src/workloads/renderer.ts`: allow the new workload type through Minecraft routing branches.
-- `grounds-forge/src/routes/pushes.ts`: allow tar/gzip uploads for `minestom-server` and keep rejecting generic `service` bundles.
+- `grounds-forge/src/routes/pushes.ts`: allow gzip bundle uploads for `minestom-server` and keep rejecting generic `service` bundles.
 - `grounds-forge/tests/*.test.ts`: cover manifest normalization, base image seed, templates, push upload, and renderer behavior.
 - `grounds-cli/internal/minestom/manifest.go`: parse the selected Minestom flavor from `grounds.yaml`.
-- `grounds-cli/internal/minestom/composition.go`: resolve local module overrides, generate Gradle init scripts, and resolve distribution artifacts.
+- `grounds-cli/internal/minestom/composition.go`: resolve local module overrides, generate Gradle init scripts, resolve distribution artifacts, and normalize Gradle distributions into Forge bundle layout.
 - `grounds-cli/internal/minestom/manifest_test.go`: parser tests.
 - `grounds-cli/internal/minestom/composition_test.go`: local override, init script, and artifact tests.
 - `grounds-cli/internal/api/push.go`: add multipart push creation.
@@ -768,7 +768,10 @@ Create `grounds-cli/internal/minestom/composition_test.go`:
 package minestom
 
 import (
+	"archive/tar"
 	"context"
+	"compress/gzip"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -874,6 +877,52 @@ func TestResolveDistributionArtifactPicksNewestTar(t *testing.T) {
 	}
 }
 
+func TestNormalizeDistributionArtifactRepackagesGradleTar(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "minigame.tar")
+	writeGradleTar(t, source, "minigame-local-SNAPSHOT")
+
+	normalized, cleanup, err := NormalizeDistributionArtifact(source)
+	if err != nil {
+		t.Fatalf("NormalizeDistributionArtifact() error = %v", err)
+	}
+	defer cleanup()
+
+	file, err := os.Open(normalized)
+	if err != nil {
+		t.Fatalf("Open(normalized) error = %v", err)
+	}
+	defer file.Close()
+	gzipReader, err := gzip.NewReader(file)
+	if err != nil {
+		t.Fatalf("gzip.NewReader() error = %v", err)
+	}
+	defer gzipReader.Close()
+	reader := tar.NewReader(gzipReader)
+	var names []string
+	var launcherMode int64
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("tar.Next() error = %v", err)
+		}
+		names = append(names, header.Name)
+		if header.Name == "app/bin/app" {
+			launcherMode = header.Mode
+		}
+	}
+
+	want := []string{"app/", "app/bin/", "app/bin/app", "app/lib/", "app/lib/minigame.jar"}
+	if strings.Join(names, ",") != strings.Join(want, ",") {
+		t.Fatalf("normalized entries = %v, want %v", names, want)
+	}
+	if launcherMode&0o111 == 0 {
+		t.Fatalf("launcher mode = %o, want executable bits", launcherMode)
+	}
+}
+
 func mkdirTestDir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o755); err != nil {
@@ -883,6 +932,47 @@ func mkdirTestDir(t *testing.T, path string) {
 
 func quoteForTest(value string) string {
 	return "\"" + strings.ReplaceAll(filepath.ToSlash(value), "\"", "\\\"") + "\""
+}
+
+func writeGradleTar(t *testing.T, path, root string) {
+	t.Helper()
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("Create(%q) error = %v", path, err)
+	}
+	defer file.Close()
+	writer := tar.NewWriter(file)
+	defer writer.Close()
+	entries := []struct {
+		name string
+		mode int64
+		body string
+		dir  bool
+	}{
+		{root + "/", 0o755, "", true},
+		{root + "/bin/", 0o755, "", true},
+		{root + "/bin/minigame", 0o755, "#!/bin/sh\n"},
+		{root + "/bin/minigame.bat", 0o644, "@echo off\r\n"},
+		{root + "/lib/", 0o755, "", true},
+		{root + "/lib/minigame.jar", 0o644, "jar"},
+	}
+	for _, entry := range entries {
+		header := &tar.Header{Name: entry.name, Mode: entry.mode}
+		if entry.dir {
+			header.Typeflag = tar.TypeDir
+		} else {
+			header.Typeflag = tar.TypeReg
+			header.Size = int64(len(entry.body))
+		}
+		if err := writer.WriteHeader(header); err != nil {
+			t.Fatalf("WriteHeader(%q) error = %v", entry.name, err)
+		}
+		if !entry.dir {
+			if _, err := writer.Write([]byte(entry.body)); err != nil {
+				t.Fatalf("Write(%q) error = %v", entry.name, err)
+			}
+		}
+	}
 }
 ```
 
@@ -905,6 +995,8 @@ Create `grounds-cli/internal/minestom/composition.go` with:
 package minestom
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -1057,6 +1149,33 @@ func ResolveDistributionArtifact(projectRoot, pattern string) (string, error) {
 	return candidates[0], nil
 }
 
+func NormalizeDistributionArtifact(sourcePath string) (string, func(), error) {
+	tempDir, err := os.MkdirTemp("", "grounds-minestom-distribution-*")
+	if err != nil {
+		return "", nil, err
+	}
+	cleanup := func() { _ = os.RemoveAll(tempDir) }
+	stagingRoot := filepath.Join(tempDir, "stage", "app")
+	if err := os.MkdirAll(stagingRoot, 0o755); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	if err := extractGradleDistribution(sourcePath, stagingRoot); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	if err := normalizeLauncher(filepath.Join(stagingRoot, "bin")); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	outPath := filepath.Join(tempDir, "app.tar.gz")
+	if err := writeGzipTar(filepath.Join(tempDir, "stage"), outPath); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return outPath, cleanup, nil
+}
+
 func ArtifactSHA256(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -1081,6 +1200,149 @@ func manifestHasModule(modules []Module, id string) bool {
 
 func kotlinString(value string) string {
 	return "\"" + strings.ReplaceAll(value, "\"", "\\\"") + "\""
+}
+
+func extractGradleDistribution(sourcePath, stagingRoot string) error {
+	file, err := os.Open(sourcePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	var source io.Reader = file
+	if strings.HasSuffix(strings.ToLower(sourcePath), ".gz") || strings.HasSuffix(strings.ToLower(sourcePath), ".tgz") {
+		gzipReader, err := gzip.NewReader(file)
+		if err != nil {
+			return err
+		}
+		defer gzipReader.Close()
+		source = gzipReader
+	}
+	reader := tar.NewReader(source)
+	var root string
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		name := filepath.ToSlash(header.Name)
+		parts := strings.Split(strings.Trim(name, "/"), "/")
+		if len(parts) == 0 || parts[0] == "" {
+			continue
+		}
+		if root == "" {
+			root = parts[0]
+		}
+		if parts[0] != root {
+			return fmt.Errorf("distribution contains multiple roots: %q and %q", root, parts[0])
+		}
+		relative := strings.Join(parts[1:], "/")
+		if relative == "" {
+			continue
+		}
+		target := filepath.Join(stagingRoot, filepath.FromSlash(relative))
+		if !strings.HasPrefix(target, stagingRoot+string(os.PathSeparator)) {
+			return fmt.Errorf("unsafe distribution path %q", header.Name)
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, os.FileMode(header.Mode)); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return err
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(out, reader); err != nil {
+				out.Close()
+				return err
+			}
+			if err := out.Close(); err != nil {
+				return err
+			}
+		}
+	}
+	if root == "" {
+		return fmt.Errorf("distribution archive has no root directory")
+	}
+	return nil
+}
+
+func normalizeLauncher(binDir string) error {
+	entries, err := os.ReadDir(binDir)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || strings.HasSuffix(strings.ToLower(entry.Name()), ".bat") {
+			continue
+		}
+		source := filepath.Join(binDir, entry.Name())
+		target := filepath.Join(binDir, "app")
+		if source != target {
+			if err := os.Rename(source, target); err != nil {
+				return err
+			}
+		}
+		return os.Chmod(target, 0o755)
+	}
+	return fmt.Errorf("distribution bin directory has no Unix launcher")
+}
+
+func writeGzipTar(sourceRoot, outPath string) error {
+	out, err := os.Create(outPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	gzipWriter := gzip.NewWriter(out)
+	defer gzipWriter.Close()
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+	return filepath.WalkDir(sourceRoot, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(sourceRoot, path)
+		if err != nil {
+			return err
+		}
+		if relative == "." {
+			return nil
+		}
+		name := filepath.ToSlash(relative)
+		if entry.IsDir() {
+			name += "/"
+		}
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = name
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		_, err = io.Copy(tarWriter, file)
+		return err
+	})
 }
 ```
 
@@ -1115,7 +1377,7 @@ In `grounds-cli/internal/api/push_test.go`, add:
 
 ```go
 func TestCreatePushSendsMultipartDistribution(t *testing.T) {
-	artifact := filepath.Join(t.TempDir(), "app.tar")
+	artifact := filepath.Join(t.TempDir(), "app.tar.gz")
 	if err := os.WriteFile(artifact, []byte{0x1f, 0x8b, 0x08, 0x00}, 0o600); err != nil {
 		t.Fatalf("WriteFile(artifact) error = %v", err)
 	}
@@ -1150,7 +1412,7 @@ func TestCreatePushSendsMultipartDistribution(t *testing.T) {
 			t.Fatalf("FormFile(jar) error = %v", err)
 		}
 		defer file.Close()
-		if header.Filename != "app.tar" {
+		if header.Filename != "app.tar.gz" {
 			t.Fatalf("filename = %q", header.Filename)
 		}
 		json.NewEncoder(w).Encode(map[string]any{"pushId": "push-1", "status": "building", "logsUrl": "/v1/pushes/push-1/logs"})
@@ -1381,7 +1643,7 @@ flavors:
 	if err := os.MkdirAll("server/build/distributions", 0o755); err != nil {
 		t.Fatalf("MkdirAll(distributions) error = %v", err)
 	}
-	writePushTestFile(t, "server/build/distributions/minestom-demo.tar", "\x1f\x8b\x08\x00")
+	writePushGradleTar(t, "server/build/distributions/minestom-demo.tar", "minestom-demo-local-SNAPSHOT")
 	writePushTestFile(t, "gradlew", "#!/bin/sh\nprintf '%s\n' \"$@\" > args.txt\n")
 	if err := os.Chmod("gradlew", 0o755); err != nil {
 		t.Fatalf("Chmod(gradlew) error = %v", err)
@@ -1416,6 +1678,21 @@ repos:
 		}
 		if !strings.Contains(r.FormValue("manifest"), `"type":"minestom-server"`) {
 			t.Fatalf("manifest = %s", r.FormValue("manifest"))
+		}
+		file, header, err := r.FormFile("jar")
+		if err != nil {
+			t.Fatalf("FormFile(jar) error = %v", err)
+		}
+		defer file.Close()
+		if header.Filename != "app.tar.gz" {
+			t.Fatalf("filename = %q, want app.tar.gz", header.Filename)
+		}
+		magic := make([]byte, 2)
+		if _, err := file.Read(magic); err != nil {
+			t.Fatalf("Read(upload magic) error = %v", err)
+		}
+		if magic[0] != 0x1f || magic[1] != 0x8b {
+			t.Fatalf("upload magic = %x, want gzip", magic)
 		}
 		json.NewEncoder(w).Encode(map[string]any{"pushId": "push-1", "status": "building"})
 	}))
@@ -1452,9 +1729,49 @@ func writePushTestFile(t *testing.T, path, content string) {
 		t.Fatalf("WriteFile(%q) error = %v", path, err)
 	}
 }
+
+func writePushGradleTar(t *testing.T, path, root string) {
+	t.Helper()
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("Create(%q) error = %v", path, err)
+	}
+	defer file.Close()
+	writer := tar.NewWriter(file)
+	defer writer.Close()
+	entries := []struct {
+		name string
+		mode int64
+		body string
+		dir  bool
+	}{
+		{root + "/", 0o755, "", true},
+		{root + "/bin/", 0o755, "", true},
+		{root + "/bin/minestom-demo", 0o755, "#!/bin/sh\n"},
+		{root + "/lib/", 0o755, "", true},
+		{root + "/lib/minestom-demo.jar", 0o644, "jar"},
+	}
+	for _, entry := range entries {
+		header := &tar.Header{Name: entry.name, Mode: entry.mode}
+		if entry.dir {
+			header.Typeflag = tar.TypeDir
+		} else {
+			header.Typeflag = tar.TypeReg
+			header.Size = int64(len(entry.body))
+		}
+		if err := writer.WriteHeader(header); err != nil {
+			t.Fatalf("WriteHeader(%q) error = %v", entry.name, err)
+		}
+		if !entry.dir {
+			if _, err := writer.Write([]byte(entry.body)); err != nil {
+				t.Fatalf("Write(%q) error = %v", entry.name, err)
+			}
+		}
+	}
+}
 ```
 
-Add imports: `encoding/json`, `net/http`, `net/http/httptest`.
+Add imports: `archive/tar`, `encoding/json`, `net/http`, `net/http/httptest`.
 
 - [ ] **Step 3: Run command tests to verify failure**
 
@@ -1515,10 +1832,15 @@ func runMinestomPush(ctx context.Context, cmd *cobra.Command, wrapper string, pu
 	if err := runGradleWrapper(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0); err != nil {
 		return err
 	}
-	artifact, err := minestom.ResolveDistributionArtifact(projectRoot, pushManifest.Runtime.Build.Artifact)
+	distributionArtifact, err := minestom.ResolveDistributionArtifact(projectRoot, pushManifest.Runtime.Build.Artifact)
 	if err != nil {
 		return err
 	}
+	artifact, cleanupArtifact, err := minestom.NormalizeDistributionArtifact(distributionArtifact)
+	if err != nil {
+		return err
+	}
+	defer cleanupArtifact()
 	cfg, err := config.Load("")
 	if err != nil {
 		return err

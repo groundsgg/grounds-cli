@@ -17,7 +17,8 @@ The current Forge upload path already accepts both JAR uploads and gzip bundle u
 - Keep `grounds push` as the user-facing command for Minestom dev pushes.
 - Let developers use `workspace.yaml` local mappings instead of hardcoded relative `../repo` paths.
 - Build a complete Minestom server distribution with local module overrides applied through Gradle composite builds.
-- Upload one deployable Minestom distribution artifact to Forge.
+- Normalize the Gradle distribution into Forge's gzip bundle layout before upload.
+- Upload one deployable Minestom distribution bundle to Forge.
 - Let Forge build the runtime image from the uploaded distribution and deploy it to the developer workspace.
 - Verify the feature with a real `grounds push` flow using local changes and local module mappings.
 
@@ -141,9 +142,10 @@ For `grounds push --flavor=minestom --with-local`:
    server/build/distributions/minigame-bedwars.tar
    ```
 
-8. CLI uploads the distribution artifact directly to Forge's existing `/v1/pushes` multipart endpoint.
-9. Forge receives one built Minestom distribution artifact.
-10. Forge builds an image from that distribution and deploys it to the workspace.
+8. CLI normalizes the Gradle distribution into a temporary gzip tarball whose root is `app/` and whose launcher is `app/bin/app`.
+9. CLI uploads the normalized distribution bundle directly to Forge's existing `/v1/pushes` multipart endpoint.
+10. Forge receives one built Minestom distribution bundle.
+11. Forge builds an image from that distribution and deploys it to the workspace.
 
 For `grounds push --flavor=minestom` without local overrides, the same flow runs without the generated composite init script.
 
@@ -176,6 +178,15 @@ Minimum metadata:
 ```
 
 The path is useful for local CLI output and audit logs before upload, but Forge should not rely on it for image builds. The uploaded distribution is the source of truth.
+
+Gradle's `distTar` output usually extracts to a versioned root directory such as `minigame-agones-local-SNAPSHOT/` with a generated launcher such as `bin/minigame-agones`. Forge already treats bundle uploads as gzip tarballs extracted directly into the Kaniko build context. To keep Forge deterministic and avoid requiring every Minestom project to hardcode Gradle distribution names, the CLI owns a normalization step:
+
+- accept `.tar`, `.tar.gz`, or `.tgz` Gradle distribution outputs;
+- extract the single Gradle distribution root into a temporary staging directory;
+- repackage it as `app/` in a gzip tarball;
+- rename the non-Windows generated launcher under `bin/` to `app`;
+- preserve executable file modes for launcher scripts;
+- upload only the normalized gzip tarball to Forge.
 
 Forge must treat `minestom-server` as a Minecraft workload, not as a generic HTTP service:
 
@@ -210,7 +221,7 @@ Required local verification:
 
 5. Confirm the CLI generated and used the composite-build init script.
 6. Confirm the distribution artifact contains the local module output, not the released dependency.
-7. Confirm the push path uploads the Minestom distribution artifact to Forge.
+7. Confirm the push path uploads the normalized Minestom distribution bundle to Forge.
 8. Confirm Forge accepts the upload and starts the image build/deploy flow.
 
 If the live Forge environment is unavailable, the implementation must still run a local or test-server `grounds push` equivalent that exercises the CLI upload path and must clearly document that live Forge deployment was not verified.
