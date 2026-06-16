@@ -1,8 +1,12 @@
 package push
 
 import (
+	"archive/tar"
 	"bytes"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -117,6 +121,257 @@ func TestPushFlavorFlagIsForwardedToGradle(t *testing.T) {
 	}
 }
 
+func TestPushMinestomFlavorBuildsDistributionAndUploads(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+
+	writePushTestFile(t, "grounds.yaml", `
+name: minestom-demo
+flavors:
+  minestom:
+    type: minestom-server
+    baseImage: minestom
+    build:
+      task: :server:distTar
+      artifact: server/build/distributions/*.tar
+    modules:
+      - id: plugin-agones
+        variant: minestom
+        source: github:groundsgg/plugin-agones@v0.2.0:plugin-agones-minestom.jar
+`)
+	if err := os.MkdirAll("server/build/distributions", 0o755); err != nil {
+		t.Fatalf("MkdirAll(distributions) error = %v", err)
+	}
+	writePushGradleTar(t, "server/build/distributions/minestom-demo.tar", "minestom-demo-local-SNAPSHOT")
+	writePushTestFile(t, "gradlew", "#!/bin/sh\nprintf '%s\\n' \"$@\" > args.txt\n")
+	if err := os.Chmod("gradlew", 0o755); err != nil {
+		t.Fatalf("Chmod(gradlew) error = %v", err)
+	}
+
+	workspaceDir := filepath.Join(dir, "config")
+	if err := os.MkdirAll(workspaceDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll(config) error = %v", err)
+	}
+	t.Setenv("GROUNDS_CONFIG_DIR", workspaceDir)
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+	writePushTestFile(t, filepath.Join(workspaceDir, "workspace.yaml"), `
+repos:
+  plugin-agones:
+    path: `+filepath.ToSlash(filepath.Join(dir, "plugin-agones"))+`
+    variants:
+      minestom:
+        enabled: true
+`)
+
+	var uploaded bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uploaded = true
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/pushes" {
+			t.Errorf("request = %s %s, want POST /v1/pushes", r.Method, r.URL.Path)
+		}
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			t.Errorf("ParseMultipartForm() error = %v", err)
+			return
+		}
+		if got := r.FormValue("flavor"); got != "minestom" {
+			t.Errorf("form flavor = %q, want minestom", got)
+		}
+		manifest := r.FormValue("manifest")
+		if !strings.Contains(manifest, `"type":"minestom-server"`) {
+			t.Errorf("manifest = %q, want minestom-server type", manifest)
+		}
+		if !strings.Contains(manifest, `"flavors"`) {
+			t.Errorf("manifest = %q, want flavored manifest payload", manifest)
+		}
+		file, header, err := r.FormFile("jar")
+		if err != nil {
+			t.Errorf("FormFile(jar) error = %v", err)
+			return
+		}
+		defer file.Close()
+		if header.Filename != "app.tar.gz" {
+			t.Errorf("jar filename = %q, want app.tar.gz", header.Filename)
+		}
+		magic := make([]byte, 2)
+		if _, err := file.Read(magic); err != nil {
+			t.Errorf("Read(jar magic) error = %v", err)
+			return
+		}
+		if magic[0] != 0x1f || magic[1] != 0x8b {
+			t.Errorf("jar magic = %#v, want gzip magic", magic)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"pushId": "push-1", "status": "building"})
+	}))
+	defer srv.Close()
+	t.Setenv("GROUNDS_API_URL", srv.URL)
+
+	cmd := newPush()
+	cmd.SetArgs([]string{"--flavor=minestom", "--with-local"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if !uploaded {
+		t.Fatal("expected upload request")
+	}
+	raw, err := os.ReadFile("args.txt")
+	if err != nil {
+		t.Fatalf("ReadFile(args.txt) error = %v", err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, ":server:distTar\n") || !strings.Contains(got, "-I\n") {
+		t.Fatalf("gradle args = %q, want :server:distTar and -I", got)
+	}
+}
+
+func TestPushTopLevelMinestomIgnoresWorkspaceWithoutLocalFlags(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+
+	writePushTestFile(t, "grounds.yaml", `
+name: minestom-demo
+type: minestom-server
+baseImage: minestom
+build:
+  task: :server:distTar
+  artifact: server/build/distributions/*.tar
+modules:
+  - id: plugin-agones
+    variant: minestom
+    source: github:groundsgg/plugin-agones@v0.2.0:plugin-agones-minestom.jar
+`)
+	if err := os.MkdirAll("server/build/distributions", 0o755); err != nil {
+		t.Fatalf("MkdirAll(distributions) error = %v", err)
+	}
+	writePushGradleTar(t, "server/build/distributions/minestom-demo.tar", "minestom-demo-local-SNAPSHOT")
+	writePushTestFile(t, "gradlew", "#!/bin/sh\nprintf '%s\\n' \"$@\" > args.txt\n")
+	if err := os.Chmod("gradlew", 0o755); err != nil {
+		t.Fatalf("Chmod(gradlew) error = %v", err)
+	}
+
+	workspaceDir := filepath.Join(dir, "config")
+	if err := os.MkdirAll(workspaceDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll(config) error = %v", err)
+	}
+	t.Setenv("GROUNDS_CONFIG_DIR", workspaceDir)
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+	writePushTestFile(t, filepath.Join(workspaceDir, "workspace.yaml"), "repos: [\n")
+
+	var uploaded bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uploaded = true
+		if got := r.FormValue("flavor"); got != "" {
+			t.Errorf("form flavor = %q, want empty for top-level manifest", got)
+		}
+		if manifest := r.FormValue("manifest"); !strings.Contains(manifest, `"type":"minestom-server"`) || strings.Contains(manifest, `"flavors"`) {
+			t.Errorf("manifest = %q, want top-level minestom manifest", manifest)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"pushId": "push-1", "status": "building"})
+	}))
+	defer srv.Close()
+	t.Setenv("GROUNDS_API_URL", srv.URL)
+
+	cmd := newPush()
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if !uploaded {
+		t.Fatal("expected upload request")
+	}
+	raw, err := os.ReadFile("args.txt")
+	if err != nil {
+		t.Fatalf("ReadFile(args.txt) error = %v", err)
+	}
+	if got := string(raw); strings.Contains(got, "-I\n") {
+		t.Fatalf("gradle args = %q, did not expect composite init script", got)
+	}
+}
+
+func TestPushTopLevelMinestomRejectsUnexpectedFlavor(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+
+	writePushTestFile(t, "grounds.yaml", `
+name: minestom-demo
+type: minestom-server
+baseImage: minestom
+build:
+  task: :server:distTar
+  artifact: server/build/distributions/*.tar
+modules:
+  - id: plugin-agones
+    variant: minestom
+    source: github:groundsgg/plugin-agones@v0.2.0:plugin-agones-minestom.jar
+`)
+	writePushTestFile(t, "gradlew", "#!/bin/sh\nprintf '%s\\n' \"$@\" > args.txt\n")
+	if err := os.Chmod("gradlew", 0o755); err != nil {
+		t.Fatalf("Chmod(gradlew) error = %v", err)
+	}
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+
+	cmd := newPush()
+	cmd.SetArgs([]string{"--flavor=paper"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), `unknown flavor "paper"`) {
+		t.Fatalf("Execute() error = %v, want unknown flavor", err)
+	}
+	if _, err := os.Stat("args.txt"); err == nil {
+		t.Fatal("gradle should not run for invalid top-level minestom flavor")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Stat(args.txt) error = %v", err)
+	}
+}
+
 func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 	cmd := NewPushCommand()
 
@@ -141,6 +396,55 @@ func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 
 func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\\''") + "'"
+}
+
+func writePushTestFile(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(strings.TrimPrefix(body, "\n")), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) error = %v", path, err)
+	}
+}
+
+func writePushGradleTar(t *testing.T, path, root string) {
+	t.Helper()
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("Create(%q) error = %v", path, err)
+	}
+	defer file.Close()
+	tw := tar.NewWriter(file)
+	defer tw.Close()
+
+	entries := []struct {
+		name string
+		mode int64
+		body string
+		dir  bool
+	}{
+		{root + "/", 0o755, "", true},
+		{root + "/bin/", 0o755, "", true},
+		{root + "/bin/minestom-demo", 0o755, "#!/bin/sh\n", false},
+		{root + "/bin/minestom-demo.bat", 0o644, "@echo off\r\n", false},
+		{root + "/lib/", 0o755, "", true},
+		{root + "/lib/minestom-demo.jar", 0o644, "jar", false},
+	}
+	for _, entry := range entries {
+		header := &tar.Header{Name: entry.name, Mode: entry.mode}
+		if entry.dir {
+			header.Typeflag = tar.TypeDir
+		} else {
+			header.Typeflag = tar.TypeReg
+			header.Size = int64(len(entry.body))
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			t.Fatalf("WriteHeader(%q) error = %v", entry.name, err)
+		}
+		if entry.body != "" {
+			if _, err := tw.Write([]byte(entry.body)); err != nil {
+				t.Fatalf("Write(%q) error = %v", entry.name, err)
+			}
+		}
+	}
 }
 
 func TestPushRootRejectsUnexpectedArgsBeforeDeployWork(t *testing.T) {

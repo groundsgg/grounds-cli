@@ -12,11 +12,19 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/groundsgg/grounds-cli/internal/api"
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
+	"github.com/groundsgg/grounds-cli/internal/minestom"
 	"github.com/groundsgg/grounds-cli/internal/render"
 	internalworkspace "github.com/groundsgg/grounds-cli/internal/workspace"
+)
+
+var (
+	findGradleWrapper = gradle.FindWrapper
+	runGradleWrapper  = gradle.Run
+	newAPIClient      = api.New
 )
 
 func NewPushCommand() *cobra.Command {
@@ -56,7 +64,7 @@ image moved under a stable tag, or to re-observe the build flow.`,
 			if err != nil {
 				return err
 			}
-			wrapper, err := gradle.FindWrapper(cwd)
+			wrapper, err := findGradleWrapper(cwd)
 			if err != nil {
 				return fmt.Errorf("%w\n    ! Not a Gradle project? Run %s to scaffold, or cd to your project root.", err, render.Command("grounds init"))
 			}
@@ -82,45 +90,15 @@ image moved under a stable tag, or to re-observe the build flow.`,
 				}
 			}
 
-			args := []string{"groundsPush", "--target=" + target}
-			if flavor != "" {
-				args = append(args, "--flavor="+flavor)
+			manifestPath := filepath.Join(filepath.Dir(wrapper), "grounds.yaml")
+			pushManifest, err := minestom.LoadPushManifest(manifestPath, flavor)
+			if err == nil && pushManifest.IsMinestomServer() {
+				return runMinestomPush(ctx, cmd, wrapper, pushManifest, target, flavor, force, local, withLocal)
 			}
-			if force {
-				args = append(args, "--force")
+			if err != nil && flavor == "minestom" {
+				return err
 			}
-			if withLocal || len(internalworkspace.NormalizeLocalIDs(local)) > 0 {
-				workspaceConfig, err := internalworkspace.Load("")
-				if err != nil {
-					return err
-				}
-				manifestPath := filepath.Join(filepath.Dir(wrapper), "grounds.yaml")
-				plan, err := internalworkspace.Resolve(ctx, manifestPath, workspaceConfig, internalworkspace.ResolveOptions{
-					LocalIDs:  local,
-					WithLocal: withLocal,
-					Flavor:    flavor,
-					Stdout:    cmd.OutOrStdout(),
-					Stderr:    cmd.ErrOrStderr(),
-				})
-				if err != nil {
-					return err
-				}
-				renderBundleSources(cmd.OutOrStdout(), plan)
-				file, err := os.CreateTemp("", "grounds-resolved-plugins-*.json")
-				if err != nil {
-					return err
-				}
-				resolvedPath := file.Name()
-				if err := file.Close(); err != nil {
-					return err
-				}
-				defer os.Remove(resolvedPath)
-				if err := internalworkspace.WritePlanFile(resolvedPath, plan); err != nil {
-					return err
-				}
-				args = append(args, "--resolved-plugins-file="+resolvedPath)
-			}
-			return gradle.Run(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
+			return runGradlePush(ctx, cmd, wrapper, target, flavor, force, local, withLocal)
 		},
 	}
 	cmd.Flags().StringVar(&target, "target", "dev", "deploy target: dev (persistent personal ns) or staging (ephemeral preview env, 7d TTL)")
@@ -135,6 +113,136 @@ image moved under a stable tag, or to re-observe the build flow.`,
 	cmd.Flags().StringArrayVar(&local, "local", nil, "use local workspace override for plugin id (repeatable, comma-separated)")
 	cmd.Flags().BoolVar(&withLocal, "with-local", false, "use all enabled local workspace overrides present in grounds.yaml")
 	return cmd
+}
+
+func runGradlePush(ctx context.Context, cmd *cobra.Command, wrapper, target, flavor string, force bool, local []string, withLocal bool) error {
+	args := []string{"groundsPush", "--target=" + target}
+	if flavor != "" {
+		args = append(args, "--flavor="+flavor)
+	}
+	if force {
+		args = append(args, "--force")
+	}
+	if withLocal || len(internalworkspace.NormalizeLocalIDs(local)) > 0 {
+		workspaceConfig, err := internalworkspace.Load("")
+		if err != nil {
+			return err
+		}
+		manifestPath := filepath.Join(filepath.Dir(wrapper), "grounds.yaml")
+		plan, err := internalworkspace.Resolve(ctx, manifestPath, workspaceConfig, internalworkspace.ResolveOptions{
+			LocalIDs:  local,
+			WithLocal: withLocal,
+			Flavor:    flavor,
+			Stdout:    cmd.OutOrStdout(),
+			Stderr:    cmd.ErrOrStderr(),
+		})
+		if err != nil {
+			return err
+		}
+		renderBundleSources(cmd.OutOrStdout(), plan)
+		file, err := os.CreateTemp("", "grounds-resolved-plugins-*.json")
+		if err != nil {
+			return err
+		}
+		resolvedPath := file.Name()
+		if err := file.Close(); err != nil {
+			return err
+		}
+		defer os.Remove(resolvedPath)
+		if err := internalworkspace.WritePlanFile(resolvedPath, plan); err != nil {
+			return err
+		}
+		args = append(args, "--resolved-plugins-file="+resolvedPath)
+	}
+	return runGradleWrapper(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
+}
+
+func runMinestomPush(ctx context.Context, cmd *cobra.Command, wrapper string, pushManifest *minestom.PushManifest, target, flavor string, force bool, local []string, withLocal bool) error {
+	projectRoot := filepath.Dir(wrapper)
+	hasFlavors := false
+	if pushManifest.Full != nil {
+		_, hasFlavors = pushManifest.Full["flavors"]
+	}
+	if !hasFlavors && flavor != "" && flavor != pushManifest.FlavorKey {
+		return fmt.Errorf("grounds.yaml: unknown flavor %q for top-level minestom runtime", flavor)
+	}
+
+	var workspaceConfig *internalworkspace.Config
+	if withLocal || len(internalworkspace.NormalizeLocalIDs(local)) > 0 {
+		var err error
+		workspaceConfig, err = internalworkspace.Load("")
+		if err != nil {
+			return err
+		}
+	}
+	localPlan, err := minestom.ResolveLocalModules(ctx, *pushManifest, workspaceConfig, minestom.ResolveOptions{LocalIDs: local, WithLocal: withLocal})
+	if err != nil {
+		return err
+	}
+	if len(localPlan.EffectivePluginSources) > 0 {
+		renderMinestomBundleSources(cmd.OutOrStdout(), localPlan)
+	}
+
+	args := []string{pushManifest.Runtime.Build.Task}
+	var initScript string
+	if len(localPlan.LocalModules) > 0 {
+		initScript, err = minestom.WriteCompositeInitScript(localPlan)
+		if err != nil {
+			return err
+		}
+		defer os.Remove(initScript)
+		args = append(args, "-I", initScript)
+	}
+	if err := runGradleWrapper(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0); err != nil {
+		return err
+	}
+	distributionArtifact, err := minestom.ResolveDistributionArtifact(projectRoot, pushManifest.Runtime.Build.Artifact)
+	if err != nil {
+		return err
+	}
+	artifact, cleanupArtifact, err := minestom.NormalizeDistributionArtifact(distributionArtifact)
+	if err != nil {
+		return err
+	}
+	defer cleanupArtifact()
+
+	cfg, err := config.Load("")
+	if err != nil {
+		return err
+	}
+	ts := api.NewEnvTokenSource()
+	if ts == nil {
+		ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
+	}
+	client := newAPIClient(cfg.APIURL, ts)
+	client.ProjectID = projectIDFrom(cmd)
+	manifestPayload := any(map[string]any{
+		"name":       pushManifest.Name,
+		"type":       pushManifest.Runtime.Type,
+		"publicType": "minestom",
+		"baseImage":  pushManifest.Runtime.BaseImage,
+	})
+	uploadFlavor := ""
+	if pushManifest.Full != nil {
+		manifestPayload = pushManifest.Full
+		if hasFlavors {
+			uploadFlavor = pushManifest.FlavorKey
+		}
+	}
+	response, err := client.CreatePush(ctx, api.CreatePushRequest{
+		Target:                 target,
+		Flavor:                 uploadFlavor,
+		Force:                  force,
+		Manifest:               manifestPayload,
+		EffectivePluginSources: localPlan.EffectivePluginSources,
+		ArtifactPath:           artifact,
+	})
+	if err != nil {
+		return err
+	}
+	render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Push", "Submitted "+response.PushID)
+	render.DetailLine(cmd.OutOrStdout(), render.StatusOK, "Status: "+response.Status)
+	return nil
 }
 
 func renderBundleSources(out io.Writer, plan *internalworkspace.Plan) {
@@ -154,6 +262,18 @@ func renderBundleSources(out io.Writer, plan *internalworkspace.Plan) {
 		rows = append(rows, []any{source.ID, source.Variant, source.Effective, value})
 	}
 	render.Table(out, []string{"ID", "Variant", "Effective", "Value"}, rows)
+}
+
+func renderMinestomBundleSources(out io.Writer, plan *minestom.LocalPlan) {
+	workspacePlan := &internalworkspace.Plan{EffectivePluginSources: plan.EffectivePluginSources}
+	for _, module := range plan.LocalModules {
+		workspacePlan.Plugins = append(workspacePlan.Plugins, internalworkspace.PlanPlugin{
+			ID:        module.ID,
+			Variant:   module.Variant,
+			LocalPath: module.Path,
+		})
+	}
+	renderBundleSources(out, workspacePlan)
 }
 
 func authRefreshError(err error) error {
