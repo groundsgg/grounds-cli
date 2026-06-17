@@ -35,6 +35,12 @@ func TestScanRootsFindsDirectChildReposWithVariants(t *testing.T) {
 	if !paper.Enabled {
 		t.Fatal("paper enabled = false, want true")
 	}
+	if paper.Module != "" {
+		t.Fatalf("paper module = %q, want empty until configured explicitly", paper.Module)
+	}
+	if paper.Project != "" {
+		t.Fatalf("paper project = %q, want empty until configured explicitly", paper.Project)
+	}
 	if _, ok := got.Variants["velocity"]; !ok {
 		t.Fatalf("missing velocity variant: %v", got.Variants)
 	}

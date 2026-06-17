@@ -126,6 +126,34 @@ func TestEntryForVariantUsesVariantSpecificArtifact(t *testing.T) {
 	}
 }
 
+func TestEntryForVariantIncludesCompositeMetadata(t *testing.T) {
+	cfg := &Config{Repos: map[string]Repo{
+		"plugin-agones": {
+			Path: "/repos/plugin-agones",
+			Variants: map[string]Variant{
+				"minestom": {
+					Artifact: "minestom/build/libs/*.jar",
+					Build:    "./gradlew :minestom:build",
+					Enabled:  true,
+					Module:   "gg.grounds:plugin-agones-minestom",
+					Project:  ":minestom",
+				},
+			},
+		},
+	}}
+
+	entry, ok := cfg.EntryForVariant("plugin-agones", "minestom")
+	if !ok {
+		t.Fatal("EntryForVariant() ok = false")
+	}
+	if entry.Module != "gg.grounds:plugin-agones-minestom" {
+		t.Fatalf("Module = %q", entry.Module)
+	}
+	if entry.Project != ":minestom" {
+		t.Fatalf("Project = %q", entry.Project)
+	}
+}
+
 func TestEntryForVariantUsesRootArtifactWhenNoVariantRequested(t *testing.T) {
 	cfg := &Config{Repos: map[string]Repo{
 		"plugin-permissions": {
