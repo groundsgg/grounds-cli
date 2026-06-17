@@ -44,6 +44,8 @@ func scanRepo(path string) Repo {
 				Artifact: filepath.ToSlash(filepath.Join(variant, "build", "libs", "*.jar")),
 				Build:    "./gradlew :" + variant + ":shadowJar",
 				Enabled:  true,
+				Module:   "gg.grounds:" + filepath.Base(path) + "-" + variant,
+				Project:  ":" + variant,
 			}
 		}
 	}

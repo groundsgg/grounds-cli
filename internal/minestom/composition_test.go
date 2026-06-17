@@ -102,7 +102,12 @@ func TestWriteCompositeInitScriptIsDeterministicAndUnique(t *testing.T) {
 	b := filepath.Join(root, "b")
 	plan := &LocalPlan{LocalModules: []LocalModule{
 		{ID: "b", Path: b},
-		{ID: "a", Path: a},
+		{
+			ID:      "a",
+			Path:    a,
+			Module:  "gg.grounds:plugin-agones-minestom",
+			Project: ":minestom",
+		},
 		{ID: "duplicate-a", Path: a},
 	}}
 
@@ -118,7 +123,11 @@ func TestWriteCompositeInitScriptIsDeterministicAndUnique(t *testing.T) {
 	}
 	expected := strings.Join([]string{
 		"settingsEvaluated {",
-		"\tincludeBuild(\"" + filepath.ToSlash(a) + "\")",
+		"\tincludeBuild(\"" + filepath.ToSlash(a) + "\") {",
+		"\t\tdependencySubstitution {",
+		"\t\t\tsubstitute(module(\"gg.grounds:plugin-agones-minestom\")).using(project(\":minestom\"))",
+		"\t\t}",
+		"\t}",
 		"\tincludeBuild(\"" + filepath.ToSlash(b) + "\")",
 		"}",
 		"",

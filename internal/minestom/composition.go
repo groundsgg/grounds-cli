@@ -37,6 +37,11 @@ type LocalModule struct {
 	Project string
 }
 
+type compositeSubstitution struct {
+	module  string
+	project string
+}
+
 type launcherCandidate struct {
 	name string
 	path string
@@ -92,22 +97,33 @@ func ResolveLocalModules(ctx context.Context, manifest PushManifest, cfg *intern
 }
 
 func WriteCompositeInitScript(plan *LocalPlan) (string, error) {
-	paths := map[string]bool{}
+	includes := map[string][]compositeSubstitution{}
 	if plan != nil {
 		for _, module := range plan.LocalModules {
 			if module.Path == "" {
 				return "", fmt.Errorf("local module %q has no path", module.ID)
 			}
+			if (module.Module == "") != (module.Project == "") {
+				return "", fmt.Errorf("local module %q requires both module and project for dependency substitution", module.ID)
+			}
 			absolute, err := filepath.Abs(module.Path)
 			if err != nil {
 				return "", err
 			}
-			paths[absolute] = true
+			if _, ok := includes[absolute]; !ok {
+				includes[absolute] = nil
+			}
+			if module.Module != "" {
+				includes[absolute] = append(includes[absolute], compositeSubstitution{
+					module:  module.Module,
+					project: module.Project,
+				})
+			}
 		}
 	}
 
-	sorted := make([]string, 0, len(paths))
-	for includePath := range paths {
+	sorted := make([]string, 0, len(includes))
+	for includePath := range includes {
 		sorted = append(sorted, includePath)
 	}
 	sort.Strings(sorted)
@@ -117,7 +133,22 @@ func WriteCompositeInitScript(plan *LocalPlan) (string, error) {
 	for _, includePath := range sorted {
 		builder.WriteString("\tincludeBuild(\"")
 		builder.WriteString(escapeKotlinString(filepath.ToSlash(includePath)))
-		builder.WriteString("\")\n")
+		substitutions := uniqueSubstitutions(includes[includePath])
+		if len(substitutions) == 0 {
+			builder.WriteString("\")\n")
+			continue
+		}
+		builder.WriteString("\") {\n")
+		builder.WriteString("\t\tdependencySubstitution {\n")
+		for _, substitution := range substitutions {
+			builder.WriteString("\t\t\tsubstitute(module(\"")
+			builder.WriteString(escapeKotlinString(substitution.module))
+			builder.WriteString("\")).using(project(\"")
+			builder.WriteString(escapeKotlinString(substitution.project))
+			builder.WriteString("\"))\n")
+		}
+		builder.WriteString("\t\t}\n")
+		builder.WriteString("\t}\n")
 	}
 	builder.WriteString("}\n")
 
@@ -137,6 +168,26 @@ func WriteCompositeInitScript(plan *LocalPlan) (string, error) {
 		return "", err
 	}
 	return file.Name(), nil
+}
+
+func uniqueSubstitutions(values []compositeSubstitution) []compositeSubstitution {
+	seen := map[string]bool{}
+	unique := make([]compositeSubstitution, 0, len(values))
+	for _, value := range values {
+		key := value.module + "\x00" + value.project
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		unique = append(unique, value)
+	}
+	sort.SliceStable(unique, func(i, j int) bool {
+		if unique[i].module == unique[j].module {
+			return unique[i].project < unique[j].project
+		}
+		return unique[i].module < unique[j].module
+	})
+	return unique
 }
 
 func ResolveDistributionArtifact(projectRoot, pattern string) (string, error) {
