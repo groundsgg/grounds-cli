@@ -224,6 +224,59 @@ func TestNormalizeDistributionArtifactRepackagesGradleTar(t *testing.T) {
 	}
 }
 
+func TestWriteNormalizedTarGzUsesDeterministicModes(t *testing.T) {
+	root := t.TempDir()
+	stageRoot := filepath.Join(root, "app")
+	if err := os.MkdirAll(filepath.Join(stageRoot, "bin"), 0o777); err != nil {
+		t.Fatalf("MkdirAll(bin) error = %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(stageRoot, "lib"), 0o777); err != nil {
+		t.Fatalf("MkdirAll(lib) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stageRoot, "bin", "app"), []byte("#!/bin/sh\n"), 0o777); err != nil {
+		t.Fatalf("WriteFile(bin/app) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stageRoot, "lib", "minigame.jar"), []byte("jar"), 0o777); err != nil {
+		t.Fatalf("WriteFile(lib/minigame.jar) error = %v", err)
+	}
+	for _, path := range []string{
+		stageRoot,
+		filepath.Join(stageRoot, "bin"),
+		filepath.Join(stageRoot, "lib"),
+		filepath.Join(stageRoot, "bin", "app"),
+		filepath.Join(stageRoot, "lib", "minigame.jar"),
+	} {
+		if err := os.Chmod(path, 0o777); err != nil {
+			t.Fatalf("Chmod(%q) error = %v", path, err)
+		}
+	}
+
+	normalizedPath := filepath.Join(root, "app.tar.gz")
+	if err := writeNormalizedTarGz(stageRoot, normalizedPath); err != nil {
+		t.Fatalf("writeNormalizedTarGz() error = %v", err)
+	}
+
+	entries := readTarGzEntries(t, normalizedPath)
+	want := []tarEntry{
+		{Name: "app/", Mode: 0o755},
+		{Name: "app/bin/", Mode: 0o755},
+		{Name: "app/bin/app", Mode: 0o755},
+		{Name: "app/lib/", Mode: 0o755},
+		{Name: "app/lib/minigame.jar", Mode: 0o644},
+	}
+	if len(entries) != len(want) {
+		t.Fatalf("entries = %#v, want %#v", entries, want)
+	}
+	for i := range want {
+		if entries[i].Name != want[i].Name {
+			t.Fatalf("entry[%d].Name = %q, want %q", i, entries[i].Name, want[i].Name)
+		}
+		if entries[i].Mode != want[i].Mode {
+			t.Fatalf("entry[%d].Mode = %o, want %o", i, entries[i].Mode, want[i].Mode)
+		}
+	}
+}
+
 func TestNormalizeDistributionArtifactRejectsUnsafeTraversalPath(t *testing.T) {
 	sourcePath := filepath.Join(t.TempDir(), "unsafe.tar")
 	createTarArchive(t, sourcePath, []archiveEntry{

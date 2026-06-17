@@ -592,6 +592,7 @@ func writeNormalizedTarGz(stageRoot, outputPath string) error {
 		if entry.IsDir() {
 			header.Name += "/"
 		}
+		header.Mode = normalizedDistributionMode(header.Name, entry.IsDir())
 		header.ModTime = time.Unix(0, 0)
 		header.AccessTime = time.Time{}
 		header.ChangeTime = time.Time{}
@@ -630,4 +631,14 @@ func writeNormalizedTarGz(stageRoot, outputPath string) error {
 		return closeGzipErr
 	}
 	return closeOutputErr
+}
+
+func normalizedDistributionMode(name string, isDir bool) int64 {
+	if isDir {
+		return 0o755
+	}
+	if name == "app/bin/app" {
+		return 0o755
+	}
+	return 0o644
 }
