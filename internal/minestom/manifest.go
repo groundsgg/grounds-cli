@@ -1,6 +1,7 @@
 package minestom
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -33,6 +34,19 @@ type Module struct {
 	ID      string `yaml:"id"`
 	Variant string `yaml:"variant"`
 	Source  string `yaml:"source"`
+}
+
+type runtimeValidationError struct {
+	message string
+}
+
+func (e *runtimeValidationError) Error() string {
+	return e.message
+}
+
+func IsRuntimeValidationError(err error) bool {
+	var validationErr *runtimeValidationError
+	return errors.As(err, &validationErr)
 }
 
 func (m PushManifest) IsMinestomServer() bool {
@@ -108,14 +122,14 @@ func validateRuntime(subject string, runtime Runtime) error {
 		missing = append(missing, "modules")
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("grounds.yaml: %s missing %s", subject, strings.Join(missing, ", "))
+		return &runtimeValidationError{message: fmt.Sprintf("grounds.yaml: %s missing %s", subject, strings.Join(missing, ", "))}
 	}
 	for i, module := range runtime.Modules {
 		if strings.TrimSpace(module.ID) == "" {
-			return fmt.Errorf("grounds.yaml: minestom module at index %d missing id", i)
+			return &runtimeValidationError{message: fmt.Sprintf("grounds.yaml: minestom module at index %d missing id", i)}
 		}
 		if strings.TrimSpace(module.Source) == "" {
-			return fmt.Errorf("grounds.yaml: minestom module %q missing source", module.ID)
+			return &runtimeValidationError{message: fmt.Sprintf("grounds.yaml: minestom module %q missing source", module.ID)}
 		}
 	}
 	return nil

@@ -372,6 +372,53 @@ modules:
 	}
 }
 
+func TestPushMinestomFlavorValidationErrorDoesNotFallBackToGradle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+
+	writePushTestFile(t, "grounds.yaml", `
+name: minestom-demo
+flavors:
+  bedwars:
+    type: minestom-server
+    baseImage: minestom
+`)
+	writePushTestFile(t, "gradlew", "#!/bin/sh\nprintf '%s\\n' \"$@\" > args.txt\n")
+	if err := os.Chmod("gradlew", 0o755); err != nil {
+		t.Fatalf("Chmod(gradlew) error = %v", err)
+	}
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+
+	cmd := newPush()
+	cmd.SetArgs([]string{"--flavor=bedwars"})
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	err = cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), `minestom flavor "bedwars" missing build.task, build.artifact, modules`) {
+		t.Fatalf("Execute() error = %v, want minestom flavor validation error", err)
+	}
+	if _, err := os.Stat("args.txt"); err == nil {
+		t.Fatal("gradle should not run after minestom flavor validation fails")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Stat(args.txt) error = %v", err)
+	}
+}
+
 func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 	cmd := NewPushCommand()
 

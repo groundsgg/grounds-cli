@@ -95,7 +95,7 @@ image moved under a stable tag, or to re-observe the build flow.`,
 			if err == nil && pushManifest.IsMinestomServer() {
 				return runMinestomPush(ctx, cmd, wrapper, pushManifest, target, flavor, force, local, withLocal)
 			}
-			if err != nil && flavor == "minestom" {
+			if err != nil && (flavor == "minestom" || minestom.IsRuntimeValidationError(err)) {
 				return err
 			}
 			return runGradlePush(ctx, cmd, wrapper, target, flavor, force, local, withLocal)
