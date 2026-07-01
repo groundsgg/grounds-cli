@@ -99,8 +99,8 @@ type ClusterDeleteResult struct {
 // per-component union (image | gradle-local | enabled:false) — the CLI
 // just passes through whatever YAML the engineer wrote.
 type BundleUpRequest struct {
-	Bundle    string                 `json:"bundle"`
-	Overrides map[string]any         `json:"overrides,omitempty"`
+	Bundle    string         `json:"bundle"`
+	Overrides map[string]any `json:"overrides,omitempty"`
 }
 
 // BundleUpResult mirrors the success body of POST /v1/cluster/bundle.
@@ -127,6 +127,30 @@ type BundleUpResult struct {
 func (c *Client) ClusterUpBundle(ctx context.Context, body *BundleUpRequest) (*BundleUpResult, error) {
 	out := &BundleUpResult{}
 	if err := c.doRequest(ctx, http.MethodPost, "/v1/cluster/bundle", body, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ClusterResetRequest is the (optional) body for POST /v1/cluster/reset.
+// An empty Bundle lets forge pick the default ref (main).
+type ClusterResetRequest struct {
+	Bundle string `json:"bundle,omitempty"`
+}
+
+// ClusterResetResult mirrors the 202 body of POST /v1/cluster/reset.
+type ClusterResetResult struct {
+	State string `json:"state"`
+	Poll  string `json:"poll,omitempty"`
+}
+
+// ClusterReset wipes a platform-bundle workspace back to a clean bundle base:
+// forge tears down the vCluster namespace and re-provisions from the bundle ref
+// (body.Bundle ?? "main") with no engineer overrides. Returns 202 immediately;
+// the caller polls GET /v1/cluster until the workspace is active again.
+func (c *Client) ClusterReset(ctx context.Context, body *ClusterResetRequest) (*ClusterResetResult, error) {
+	out := &ClusterResetResult{}
+	if err := c.doRequest(ctx, http.MethodPost, "/v1/cluster/reset", body, out); err != nil {
 		return nil, err
 	}
 	return out, nil

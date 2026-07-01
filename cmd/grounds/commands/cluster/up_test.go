@@ -66,13 +66,32 @@ overrides:
 		}
 	})
 
-	t.Run("missing bundle ref errors", func(t *testing.T) {
+	t.Run("missing bundle ref defaults to main", func(t *testing.T) {
+		// platform-bundle is the default profile: no ref on the flag or in the
+		// override file → track the bundle's main branch (not an error).
 		path := writeTempYAML(t, `
 overrides:
   velocity: {mode: image}
 `)
-		if _, err := loadBundleRequest("", path); err == nil {
-			t.Error("expected error when no bundle ref provided")
+		body, err := loadBundleRequest("", path)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if body.Bundle != "main" {
+			t.Errorf("Bundle = %q, want main (default)", body.Bundle)
+		}
+		if body.Overrides["velocity"] == nil {
+			t.Error("expected velocity override to survive the ref default")
+		}
+	})
+
+	t.Run("bare up (no flag, no file) defaults to main", func(t *testing.T) {
+		body, err := loadBundleRequest("", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if body.Bundle != "main" {
+			t.Errorf("Bundle = %q, want main (default)", body.Bundle)
 		}
 	})
 

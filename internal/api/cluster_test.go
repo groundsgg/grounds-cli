@@ -53,6 +53,48 @@ func TestGetCluster(t *testing.T) {
 	}
 }
 
+func TestClusterReset(t *testing.T) {
+	var gotBody ClusterResetRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || r.URL.Path != "/v1/cluster/reset" {
+			t.Fatalf("got %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{"state": "creating", "poll": "/v1/cluster"})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, nil)
+	res, err := c.ClusterReset(context.Background(), &ClusterResetRequest{Bundle: "0.6.4"})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if gotBody.Bundle != "0.6.4" {
+		t.Errorf("request Bundle = %q, want 0.6.4", gotBody.Bundle)
+	}
+	if res.State != "creating" || res.Poll != "/v1/cluster" {
+		t.Errorf("result = %+v", res)
+	}
+}
+
+func TestClusterReset_EmptyBundleOmitted(t *testing.T) {
+	var raw map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&raw)
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{"state": "creating"})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, nil)
+	if _, err := c.ClusterReset(context.Background(), &ClusterResetRequest{}); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	// omitempty → forge sees no `bundle` and defaults to main.
+	if _, ok := raw["bundle"]; ok {
+		t.Errorf("empty bundle should be omitted, got %v", raw)
+	}
+}
+
 func TestClusterDelete_Header(t *testing.T) {
 	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
