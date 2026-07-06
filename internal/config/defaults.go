@@ -1,7 +1,7 @@
 package config
 
 const (
-	DefaultAPIURL  = "https://platform.grnds.io"
+	DefaultAPIURL  = "https://api.grounds.gg"
 	DefaultTarget  = "dev"
 	DefaultOutput  = "table"
 	DefaultColor   = "auto"

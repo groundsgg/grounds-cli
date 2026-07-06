@@ -150,8 +150,8 @@ func TestRunDoctorChecksStrictFailsForErrorStatus(t *testing.T) {
 }
 
 func TestCheckAPISummaryIsUserFriendly(t *testing.T) {
-	result := checkAPIResult("https://platform.grnds.io", http.StatusOK, nil)
-	if result.summary != "Connected to the Grounds API at https://platform.grnds.io (/healthz returned HTTP 200)" {
+	result := checkAPIResult("https://api.grounds.gg", http.StatusOK, nil)
+	if result.summary != "Connected to the Grounds API at https://api.grounds.gg (/healthz returned HTTP 200)" {
 		t.Fatalf("unexpected API summary: %s", result.summary)
 	}
 	if len(result.details) != 0 {

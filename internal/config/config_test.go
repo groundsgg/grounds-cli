@@ -12,7 +12,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if cfg.APIURL != "https://platform.grnds.io" {
+	if cfg.APIURL != "https://api.grounds.gg" {
 		t.Errorf("APIURL = %q", cfg.APIURL)
 	}
 	if cfg.DefaultTarget != "dev" {
