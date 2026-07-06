@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/groundsgg/grounds-cli/compare/v0.5.1...v0.6.0) (2026-07-01)
+
+
+### Features
+
+* **cluster:** default to platform-bundle + add `cluster reset` ([#68](https://github.com/groundsgg/grounds-cli/issues/68)) ([35f4e81](https://github.com/groundsgg/grounds-cli/commit/35f4e81df78b9f0833830ce2ccd72dfa217f5f95))
+* push minestom distributions ([#66](https://github.com/groundsgg/grounds-cli/issues/66)) ([d243745](https://github.com/groundsgg/grounds-cli/commit/d2437454142628cc141ef5fbcec6faf32ac1fe5d))
+
 ## [0.5.1](https://github.com/groundsgg/grounds-cli/compare/v0.5.0...v0.5.1) (2026-06-12)
 
 
