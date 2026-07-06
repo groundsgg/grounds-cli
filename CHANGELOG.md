@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/groundsgg/grounds-cli/compare/v0.6.0...v0.6.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **config:** point cli to grounds api ([259eba2](https://github.com/groundsgg/grounds-cli/commit/259eba28940673816c94935b3e7ec813b3447d16))
+
 ## [0.6.0](https://github.com/groundsgg/grounds-cli/compare/v0.5.1...v0.6.0) (2026-07-01)
 
 
