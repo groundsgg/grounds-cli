@@ -18,9 +18,9 @@ type Client struct {
 	HTTP    *http.Client
 	Tokens  TokenSource
 	// ProjectID, when set, is appended as `?projectId=...` to every
-	// project-scoped request. Driven by the global `--project` flag /
-	// GROUNDS_PROJECT env var. Empty string → forge falls back to the
-	// caller's default project (their auto-created Personal one).
+	// project-scoped request. Command handlers resolve it from --project,
+	// GROUNDS_PROJECT, saved project defaults, or the account's only
+	// project before making project-scoped calls.
 	ProjectID string
 }
 
@@ -31,6 +31,12 @@ func (c *Client) WithProject(id string) *Client {
 	clone := *c
 	clone.ProjectID = id
 	return &clone
+}
+
+// ScopedURL returns an absolute API URL with the client's project scope
+// applied to the path.
+func (c *Client) ScopedURL(path string) string {
+	return c.BaseURL + c.scopedPath(path)
 }
 
 // TokenSource produces a fresh bearer token, refreshing on demand. The
@@ -84,9 +90,8 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, o
 }
 
 // scopedPath appends `?projectId=...` to the path when the client carries
-// a project id. Idempotent — does nothing when ProjectID is empty (forge
-// falls back to the caller's default project) or when the path already
-// contains a `projectId=` query.
+// a project id. Idempotent: does nothing when ProjectID is empty or when the
+// path already contains a `projectId=` query.
 func (c *Client) scopedPath(path string) string {
 	if c.ProjectID == "" {
 		return path

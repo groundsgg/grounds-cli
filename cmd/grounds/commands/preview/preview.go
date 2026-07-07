@@ -4,15 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/internal/projectscope"
 	"github.com/groundsgg/grounds-cli/internal/api"
-	"github.com/groundsgg/grounds-cli/internal/auth"
-	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
@@ -32,40 +29,9 @@ func NewPreviewCommand() *cobra.Command {
 	return cmd
 }
 
-// ----------------------------------------------------------------------------
-// helpers — duplicated from push package (small enough not to warrant a
-// shared internal/cmd helper yet; lift if a third subtree needs it).
-// ----------------------------------------------------------------------------
-
-func projectIDFrom(cmd *cobra.Command) string {
-	if cmd != nil {
-		if p, _ := cmd.Flags().GetString("project"); p != "" {
-			return p
-		}
-	}
-	return os.Getenv("GROUNDS_PROJECT")
-}
-
-func defaultDevice() *auth.DeviceClient {
-	return &auth.DeviceClient{
-		Issuer:   "https://account.grounds.gg/realms/grounds",
-		ClientID: "grounds-cli",
-		HTTP:     &http.Client{Timeout: 30 * time.Second},
-	}
-}
-
-func makeClient(cmd *cobra.Command) (*api.Client, error) {
-	cfg, err := config.Load("")
-	if err != nil {
-		return nil, err
-	}
-	ts := api.NewEnvTokenSource()
-	if ts == nil {
-		ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
-	}
-	c := api.New(cfg.APIURL, ts)
-	c.ProjectID = projectIDFrom(cmd)
-	return c, nil
+func makeClient(ctx context.Context, cmd *cobra.Command) (*api.Client, error) {
+	c, _, _, err := projectscope.BuildClient(ctx, cmd)
+	return c, err
 }
 
 // ----------------------------------------------------------------------------
@@ -79,7 +45,7 @@ func newList() *cobra.Command {
 		Short: "List preview environments in the current project",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, err := makeClient(cmd)
+			c, err := makeClient(ctx, cmd)
 			if err != nil {
 				return err
 			}
@@ -134,7 +100,7 @@ func newShow() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			c, err := makeClient(cmd)
+			c, err := makeClient(ctx, cmd)
 			if err != nil {
 				return err
 			}
@@ -179,7 +145,7 @@ func newPin(pin bool) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			c, err := makeClient(cmd)
+			c, err := makeClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

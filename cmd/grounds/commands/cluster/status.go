@@ -15,7 +15,7 @@ func newStatus() *cobra.Command {
 		Short: "Show workspace state, deployments, quota",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, _, err := buildClient(ctx, cmd)
+			c, _, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

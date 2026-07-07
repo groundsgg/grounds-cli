@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/internal/projectscope"
 	"github.com/groundsgg/grounds-cli/internal/api"
 	"github.com/groundsgg/grounds-cli/internal/auth"
 	"github.com/groundsgg/grounds-cli/internal/config"
@@ -24,6 +25,7 @@ import (
 var (
 	findGradleWrapper = gradle.FindWrapper
 	runGradleWrapper  = gradle.Run
+	runGradleWithEnv  = gradle.RunWithEnv
 	newAPIClient      = api.New
 )
 
@@ -154,7 +156,11 @@ func runGradlePush(ctx context.Context, cmd *cobra.Command, wrapper, target, fla
 		}
 		args = append(args, "--resolved-plugins-file="+resolvedPath)
 	}
-	return runGradleWrapper(ctx, wrapper, args, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
+	_, _, selected, err := projectscope.BuildClient(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	return runGradleWithEnv(ctx, wrapper, args, []string{"GROUNDS_PROJECT=" + selected.ID}, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 }
 
 func runMinestomPush(ctx context.Context, cmd *cobra.Command, wrapper string, pushManifest *minestom.PushManifest, target, flavor string, force bool, local []string, withLocal bool) error {
@@ -206,16 +212,10 @@ func runMinestomPush(ctx context.Context, cmd *cobra.Command, wrapper string, pu
 	}
 	defer cleanupArtifact()
 
-	cfg, err := config.Load("")
+	client, _, _, err := projectscope.BuildClient(ctx, cmd)
 	if err != nil {
 		return err
 	}
-	ts := api.NewEnvTokenSource()
-	if ts == nil {
-		ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
-	}
-	client := newAPIClient(cfg.APIURL, ts)
-	client.ProjectID = projectIDFrom(cmd)
 	manifestPayload := any(map[string]any{
 		"name":       pushManifest.Name,
 		"type":       pushManifest.Runtime.Type,
@@ -278,18 +278,6 @@ func renderMinestomBundleSources(out io.Writer, plan *minestom.LocalPlan) {
 
 func authRefreshError(err error) error {
 	return fmt.Errorf("auth refresh failed: %w\n    ! Run %s to re-authenticate.", err, render.Command("grounds login"))
-}
-
-// projectIDFrom resolves the global --project flag, falling back to
-// the GROUNDS_PROJECT env var. Empty string when neither is set —
-// forge then uses the caller's default project.
-func projectIDFrom(cmd *cobra.Command) string {
-	if cmd != nil {
-		if p, _ := cmd.Flags().GetString("project"); p != "" {
-			return p
-		}
-	}
-	return os.Getenv("GROUNDS_PROJECT")
 }
 
 // defaultDevice mirrors login.go (same issuer, same client ID).

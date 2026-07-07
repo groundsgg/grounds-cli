@@ -34,6 +34,7 @@ curl -sSL https://github.com/groundsgg/grounds-cli/releases/latest/download/inst
 grounds login                          # OAuth device flow
 grounds init                           # scaffold grounds.yaml
 grounds init --app-name=plugin-config --type=plugin-paper --base-image=paper --flavor=paper
+grounds project use main                  # set your default project
 grounds workspace scan ../ --yes       # discover sibling plugin repos
 grounds push                           # first push
 grounds push --flavor=paper            # push one app flavor from grounds.yaml
@@ -53,6 +54,7 @@ Use `grounds init --flavor=<key>` to scaffold a flavor manifest while legacy top
 | `grounds completion <shell>`                    | Shell completions                            |
 | `grounds doctor`                                | Diagnose env and warn about CLI updates      |
 | `grounds init`                                  | Scaffold a grounds.yaml                      |
+| `grounds project list/current/use/clear`        | Select and inspect the default project       |
 | `grounds workspace scan/add/list/enable/doctor` | Manage local plugin workspace overrides      |
 | `grounds cluster up/down/delete/status`         | Workspace lifecycle                          |
 | `grounds push [--target=dev] [--flavor=<key>]`  | Build + deploy via Gradle plugin             |
@@ -63,6 +65,12 @@ Use `grounds init --flavor=<key>` to scaffold a flavor manifest while legacy top
 ## Configuration
 
 `~/.config/grounds/config.yaml` (XDG-aware). Overridable via flags or env vars (`GROUNDS_API_URL`, `GROUNDS_TOKEN`, `GROUNDS_CONFIG_DIR`).
+
+Project-scoped commands use this precedence:
+`--project` > `GROUNDS_PROJECT` > local default > global default > the only available project.
+Use `grounds project use <id-or-slug>` to save a global default, or `grounds project use <id-or-slug> --local`
+to save a default for the current repository. `grounds project clear` removes the saved global default;
+`grounds project clear --local` removes the local default only.
 
 Local plugin workspace overrides are stored in `~/.config/grounds/workspace.yaml`.
 Default `grounds push` still uses the plugin sources pinned in committed `grounds.yaml`.

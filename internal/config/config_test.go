@@ -26,7 +26,7 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	os.WriteFile(path, []byte("apiUrl: https://example.test\noutput: json\n"), 0600)
+	os.WriteFile(path, []byte("apiUrl: https://example.test\noutput: json\ndefaultProjectId: project-id\n"), 0600)
 
 	cfg, err := Load(dir)
 	if err != nil {
@@ -41,6 +41,9 @@ func TestLoadFromFile(t *testing.T) {
 	if cfg.DefaultTarget != "dev" {
 		t.Errorf("DefaultTarget = %q (expected default)", cfg.DefaultTarget)
 	}
+	if cfg.DefaultProjectID != "project-id" {
+		t.Errorf("DefaultProjectID = %q", cfg.DefaultProjectID)
+	}
 }
 
 func TestLoadFromEnv(t *testing.T) {
@@ -49,5 +52,24 @@ func TestLoadFromEnv(t *testing.T) {
 	cfg, _ := Load(dir)
 	if cfg.APIURL != "https://override.test" {
 		t.Errorf("env override failed: %q", cfg.APIURL)
+	}
+}
+
+func TestSaveProjectDefault(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.DefaultProjectID = "project-id"
+	if err := Save(dir, cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load after Save: %v", err)
+	}
+	if got.DefaultProjectID != "project-id" {
+		t.Fatalf("DefaultProjectID = %q", got.DefaultProjectID)
 	}
 }

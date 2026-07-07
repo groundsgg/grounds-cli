@@ -47,7 +47,7 @@ Examples:
 			}
 
 			ctx := context.Background()
-			c, _, err := buildClient(ctx, cmd)
+			c, _, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

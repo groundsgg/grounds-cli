@@ -3,13 +3,13 @@ package push
 import (
 	"context"
 	"io"
+	"net/url"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/internal/projectscope"
 	"github.com/groundsgg/grounds-cli/internal/api"
-	"github.com/groundsgg/grounds-cli/internal/auth"
-	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/render"
 	"github.com/groundsgg/grounds-cli/internal/sse"
 )
@@ -22,16 +22,10 @@ func newRetry() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			cfg, err := config.Load("")
+			c, _, _, err := projectscope.BuildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}
-			ts := api.NewEnvTokenSource()
-			if ts == nil {
-				ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
-			}
-			c := api.New(cfg.APIURL, ts)
-			c.ProjectID = projectIDFrom(cmd)
 			p, err := c.RetryPush(ctx, args[0])
 			if err != nil {
 				return err
@@ -40,15 +34,11 @@ func newRetry() *cobra.Command {
 			if !follow {
 				return nil
 			}
-			tok, err := ts.Token(ctx)
+			tok, err := c.Tokens.Token(ctx)
 			if err != nil {
 				return err
 			}
-			stream := &sse.Stream{
-				URL:    cfg.APIURL + "/v1/pushes/" + p.ID + "/logs",
-				Token:  tok,
-				Client: defaultHTTP(),
-			}
+			stream := retryLogStream(c, p.ID, tok)
 			return stream.Subscribe(ctx, func(ev *sse.Event) error {
 				if sse.Render(os.Stdout, ev) {
 					return io.EOF
@@ -59,6 +49,14 @@ func newRetry() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&follow, "follow", true, "stream logs after retry")
 	return cmd
+}
+
+func retryLogStream(c *api.Client, pushID, token string) *sse.Stream {
+	return &sse.Stream{
+		URL:    c.ScopedURL("/v1/pushes/" + url.PathEscape(pushID) + "/logs"),
+		Token:  token,
+		Client: defaultHTTP(),
+	}
 }
 
 func renderRetryTriggered(out io.Writer, p *api.Push) {

@@ -46,7 +46,7 @@ re-up. To wipe a platform-bundle workspace back to a clean bundle base without
 changing profile, use ` + "`grounds cluster reset`" + `.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, _, err := buildClient(ctx, cmd)
+			c, _, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

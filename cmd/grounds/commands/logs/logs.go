@@ -2,16 +2,16 @@ package logs
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/groundsgg/grounds-cli/internal/api"
-	"github.com/groundsgg/grounds-cli/internal/auth"
-	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/internal/projectscope"
 	"github.com/groundsgg/grounds-cli/internal/sse"
 )
 
@@ -23,7 +23,7 @@ func NewLogsCommand() *cobra.Command {
 		Example: "  grounds logs <pushId>\n  grounds logs <pushId> --follow\n  grounds logs deployment <name>",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return streamLogs(cmd.Context(), args[0], "push", follow)
+			return streamLogs(cmd.Context(), cmd, args[0], "push", follow)
 		},
 	}
 	cmd.Flags().BoolVarP(&follow, "follow", "f", true, "follow until terminal status")
@@ -38,34 +38,18 @@ func newDeployment() *cobra.Command {
 		Short: "Stream deployment logs",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return streamLogs(cmd.Context(), args[0], "deployment", follow)
+			return streamLogs(cmd.Context(), cmd, args[0], "deployment", follow)
 		},
 	}
 	cmd.Flags().BoolVarP(&follow, "follow", "f", true, "follow")
 	return cmd
 }
 
-func streamLogs(ctx context.Context, target, kind string, follow bool) error {
-	cfg, err := config.Load("")
+func streamLogs(ctx context.Context, cmd *cobra.Command, target, kind string, follow bool) error {
+	stream, err := buildStream(ctx, cmd, target, kind)
 	if err != nil {
 		return err
 	}
-	ts := api.NewEnvTokenSource()
-	if ts == nil {
-		ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
-	}
-	tok, err := ts.Token(ctx)
-	if err != nil {
-		return err
-	}
-	var path string
-	switch kind {
-	case "push":
-		path = "/v1/pushes/" + target + "/logs"
-	case "deployment":
-		path = "/v1/deployments/" + target + "/logs"
-	}
-	stream := &sse.Stream{URL: cfg.APIURL + path, Token: tok, Client: defaultHTTP()}
 	if !follow {
 		// No-follow: read until first terminal status, then exit.
 	}
@@ -77,15 +61,25 @@ func streamLogs(ctx context.Context, target, kind string, follow bool) error {
 	})
 }
 
-// defaultDevice mirrors login.go (same issuer, same client ID).
-// Lifted here so subcommands don't depend on the commands package.
-func defaultDevice() *auth.DeviceClient {
-	// Avoid pkg-level constants from sibling pkg; hardcode same values
-	return &auth.DeviceClient{
-		Issuer:   "https://account.grounds.gg/realms/grounds",
-		ClientID: "grounds-cli",
-		HTTP:     defaultHTTP(),
+func buildStream(ctx context.Context, cmd *cobra.Command, target, kind string) (*sse.Stream, error) {
+	c, _, _, err := projectscope.BuildClient(ctx, cmd)
+	if err != nil {
+		return nil, err
 	}
+	tok, err := c.Tokens.Token(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var path string
+	switch kind {
+	case "push":
+		path = "/v1/pushes/" + url.PathEscape(target) + "/logs"
+	case "deployment":
+		path = "/v1/deployments/" + url.PathEscape(target) + "/logs"
+	default:
+		return nil, fmt.Errorf("unknown log target kind: %s", kind)
+	}
+	return &sse.Stream{URL: c.ScopedURL(path), Token: tok, Client: defaultHTTP()}, nil
 }
 
 func defaultHTTP() *http.Client {
