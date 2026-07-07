@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/groundsgg/grounds-cli/compare/v0.6.1...v0.7.0) (2026-07-07)
+
+
+### Features
+
+* add project defaults ([#70](https://github.com/groundsgg/grounds-cli/issues/70)) ([9adee5c](https://github.com/groundsgg/grounds-cli/commit/9adee5c524712f0ec5e6f07262fa458a8572ddcd))
+
 ## [0.6.1](https://github.com/groundsgg/grounds-cli/compare/v0.6.0...v0.6.1) (2026-07-06)
 
 
