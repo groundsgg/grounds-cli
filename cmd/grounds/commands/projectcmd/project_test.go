@@ -59,6 +59,44 @@ func TestProjectUseStoresGlobalDefaultByID(t *testing.T) {
 	})
 }
 
+func TestProjectUsePreservesSavedAPIURLWhenEnvOverridesAPI(t *testing.T) {
+	withProjectAPITest(t, func(serverURL, configDir string) {
+		if err := config.Save(configDir, &config.Config{
+			APIURL:           "https://saved.grounds.test",
+			DefaultTarget:    "dev",
+			Output:           "table",
+			Color:            "auto",
+			DefaultProjectID: "p-main",
+		}); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		t.Setenv("GROUNDS_API_URL", serverURL)
+		t.Setenv("GROUNDS_CONFIG_DIR", configDir)
+		t.Setenv("GROUNDS_TOKEN", "token")
+
+		cmd := NewProjectCommand()
+		cmd.SetArgs([]string{"use", "team"})
+
+		if err := cmd.Execute(); err != nil {
+			t.Fatalf("Execute: %v", err)
+		}
+		raw, err := os.ReadFile(filepath.Join(configDir, config.ConfigFileName))
+		if err != nil {
+			t.Fatalf("ReadFile(config): %v", err)
+		}
+		got := string(raw)
+		if !strings.Contains(got, "apiUrl: https://saved.grounds.test") {
+			t.Fatalf("config = %q, want saved apiUrl to be preserved", got)
+		}
+		if strings.Contains(got, serverURL) {
+			t.Fatalf("config = %q, did not expect env API URL to be persisted", got)
+		}
+		if !strings.Contains(got, "defaultProjectId: p-team") {
+			t.Fatalf("config = %q, want updated default project", got)
+		}
+	})
+}
+
 func TestProjectUseStoresLocalDefaultByWorkspaceRoot(t *testing.T) {
 	withProjectAPITest(t, func(serverURL, configDir string) {
 		t.Setenv("GROUNDS_API_URL", serverURL)

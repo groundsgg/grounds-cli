@@ -124,8 +124,12 @@ func newUse() *cobra.Command {
 				render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Project", fmt.Sprintf("using %s locally", displayProject(selected.Project)))
 				return nil
 			}
-			cfg.DefaultProjectID = selected.ID
-			if err := config.Save(cfg.Dir, cfg); err != nil {
+			fileCfg, err := config.LoadFile(cfg.Dir)
+			if err != nil {
+				return err
+			}
+			fileCfg.DefaultProjectID = selected.ID
+			if err := config.Save(fileCfg.Dir, fileCfg); err != nil {
 				return err
 			}
 			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Project", fmt.Sprintf("using %s globally", displayProject(selected.Project)))
@@ -159,8 +163,12 @@ func newClear() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cfg.DefaultProjectID = ""
-			if err := config.Save(cfg.Dir, cfg); err != nil {
+			fileCfg, err := config.LoadFile(cfg.Dir)
+			if err != nil {
+				return err
+			}
+			fileCfg.DefaultProjectID = ""
+			if err := config.Save(fileCfg.Dir, fileCfg); err != nil {
 				return err
 			}
 			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Project", "cleared global default project")

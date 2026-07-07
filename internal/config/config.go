@@ -18,6 +18,14 @@ type Config struct {
 }
 
 func Load(dir string) (*Config, error) {
+	return load(dir, true)
+}
+
+func LoadFile(dir string) (*Config, error) {
+	return load(dir, false)
+}
+
+func load(dir string, includeEnv bool) (*Config, error) {
 	if dir == "" {
 		var err error
 		dir, err = ResolveDir()
@@ -39,8 +47,10 @@ func Load(dir string) (*Config, error) {
 	v.SetDefault("defaultProjectId", "")
 	v.SetDefault("output", DefaultOutput)
 	v.SetDefault("color", DefaultColor)
-	v.AutomaticEnv()
-	v.BindEnv("apiUrl", "GROUNDS_API_URL")
+	if includeEnv {
+		v.AutomaticEnv()
+		v.BindEnv("apiUrl", "GROUNDS_API_URL")
+	}
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, missing := err.(viper.ConfigFileNotFoundError); !missing {

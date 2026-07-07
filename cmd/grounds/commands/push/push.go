@@ -18,7 +18,6 @@ import (
 	"github.com/groundsgg/grounds-cli/internal/config"
 	"github.com/groundsgg/grounds-cli/internal/gradle"
 	"github.com/groundsgg/grounds-cli/internal/minestom"
-	"github.com/groundsgg/grounds-cli/internal/project"
 	"github.com/groundsgg/grounds-cli/internal/render"
 	internalworkspace "github.com/groundsgg/grounds-cli/internal/workspace"
 )
@@ -157,41 +156,11 @@ func runGradlePush(ctx context.Context, cmd *cobra.Command, wrapper, target, fla
 		}
 		args = append(args, "--resolved-plugins-file="+resolvedPath)
 	}
-	return runGradleWithEnv(ctx, wrapper, args, gradleProjectEnv(cmd), cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
-}
-
-func gradleProjectEnv(cmd *cobra.Command) []string {
-	projectID := gradleProjectID(cmd)
-	if projectID == "" {
-		return nil
-	}
-	return []string{"GROUNDS_PROJECT=" + projectID}
-}
-
-func gradleProjectID(cmd *cobra.Command) string {
-	if cmd != nil {
-		if flag := cmd.Flag("project"); flag != nil {
-			if value := strings.TrimSpace(flag.Value.String()); value != "" {
-				return value
-			}
-		}
-	}
-	if value := strings.TrimSpace(os.Getenv("GROUNDS_PROJECT")); value != "" {
-		return value
-	}
-
-	cfg, err := config.Load("")
+	_, _, selected, err := projectscope.BuildClient(ctx, cmd)
 	if err != nil {
-		return ""
+		return err
 	}
-	if wcfg, err := internalworkspace.Load(""); err == nil {
-		if wd, err := os.Getwd(); err == nil {
-			if value := strings.TrimSpace(wcfg.ProjectDefaults[project.WorkspaceRoot(wd)]); value != "" {
-				return value
-			}
-		}
-	}
-	return strings.TrimSpace(cfg.DefaultProjectID)
+	return runGradleWithEnv(ctx, wrapper, args, []string{"GROUNDS_PROJECT=" + selected.ID}, cmd.OutOrStdout(), cmd.ErrOrStderr(), 0)
 }
 
 func runMinestomPush(ctx context.Context, cmd *cobra.Command, wrapper string, pushManifest *minestom.PushManifest, target, flavor string, force bool, local []string, withLocal bool) error {
