@@ -57,10 +57,12 @@ func TestResolveUsesEnvBeforeLocalDefault(t *testing.T) {
 }
 
 func TestResolveUsesLocalDefaultBeforeGlobalDefault(t *testing.T) {
+	repo := t.TempDir()
+	root := WorkspaceRoot(repo)
 	got, err := Resolve(context.Background(), ResolveOptions{
 		Config:          &config.Config{DefaultProjectID: "global-id"},
-		WorkspaceConfig: &workspace.Config{ProjectDefaults: map[string]string{"/repo": "local-id"}},
-		WorkDir:         "/repo",
+		WorkspaceConfig: &workspace.Config{ProjectDefaults: map[string]string{root: "local-id"}},
+		WorkDir:         repo,
 		Client: fakeProjectsClient{projects: []api.Project{
 			{ID: "global-id", Slug: "global", Name: "Global"},
 			{ID: "local-id", Slug: "local", Name: "Local"},
