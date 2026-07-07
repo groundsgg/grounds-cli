@@ -5,14 +5,16 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	APIURL        string `mapstructure:"apiUrl"`
-	DefaultTarget string `mapstructure:"defaultTarget"`
-	Output        string `mapstructure:"output"`
-	Color         string `mapstructure:"color"`
-	Dir           string `mapstructure:"-"`
+	APIURL           string `mapstructure:"apiUrl" yaml:"apiUrl"`
+	DefaultTarget    string `mapstructure:"defaultTarget" yaml:"defaultTarget"`
+	DefaultProjectID string `mapstructure:"defaultProjectId" yaml:"defaultProjectId,omitempty"`
+	Output           string `mapstructure:"output" yaml:"output"`
+	Color            string `mapstructure:"color" yaml:"color"`
+	Dir              string `mapstructure:"-" yaml:"-"`
 }
 
 func Load(dir string) (*Config, error) {
@@ -34,6 +36,7 @@ func Load(dir string) (*Config, error) {
 	v.SetEnvPrefix("GROUNDS")
 	v.SetDefault("apiUrl", DefaultAPIURL)
 	v.SetDefault("defaultTarget", DefaultTarget)
+	v.SetDefault("defaultProjectId", "")
 	v.SetDefault("output", DefaultOutput)
 	v.SetDefault("color", DefaultColor)
 	v.AutomaticEnv()
@@ -50,6 +53,34 @@ func Load(dir string) (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+func Save(dir string, cfg *Config) error {
+	if dir == "" {
+		var err error
+		dir, err = ResolveDir()
+		if err != nil {
+			return err
+		}
+	}
+	if cfg == nil {
+		cfg = &Config{}
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return err
+	}
+	raw, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, ConfigFileName)
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0o600)
 }
 
 // ResolveDir picks the OS-appropriate config directory.

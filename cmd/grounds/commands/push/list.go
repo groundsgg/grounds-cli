@@ -6,9 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/groundsgg/grounds-cli/internal/api"
-	"github.com/groundsgg/grounds-cli/internal/auth"
-	"github.com/groundsgg/grounds-cli/internal/config"
+	"github.com/groundsgg/grounds-cli/cmd/grounds/commands/internal/projectscope"
 	"github.com/groundsgg/grounds-cli/internal/render"
 )
 
@@ -21,16 +19,10 @@ func newList() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			cfg, err := config.Load("")
+			c, _, _, err := projectscope.BuildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}
-			ts := api.NewEnvTokenSource()
-			if ts == nil {
-				ts = &auth.FileTokenSource{Store: auth.NewStore(cfg.Dir), Device: defaultDevice()}
-			}
-			c := api.New(cfg.APIURL, ts)
-			c.ProjectID = projectIDFrom(cmd)
 			list, err := c.ListPushes(ctx, mine, limit)
 			if err != nil {
 				return err

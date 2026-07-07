@@ -19,7 +19,7 @@ func newDelete() *cobra.Command {
 		Short: "Permanently delete the workspace and all its data",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, _, err := buildClient(ctx, cmd)
+			c, _, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}

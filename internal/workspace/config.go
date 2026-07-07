@@ -12,7 +12,8 @@ import (
 const FileName = "workspace.yaml"
 
 type Config struct {
-	Repos map[string]Repo `yaml:"repos,omitempty"`
+	Repos           map[string]Repo   `yaml:"repos,omitempty"`
+	ProjectDefaults map[string]string `yaml:"projectDefaults,omitempty"`
 }
 
 type Repo struct {
@@ -70,6 +71,9 @@ func Load(path string) (*Config, error) {
 	if cfg.Repos == nil {
 		cfg.Repos = map[string]Repo{}
 	}
+	if cfg.ProjectDefaults == nil {
+		cfg.ProjectDefaults = map[string]string{}
+	}
 	return cfg, nil
 }
 
@@ -86,6 +90,9 @@ func Save(path string, cfg *Config) error {
 	}
 	if cfg.Repos == nil {
 		cfg.Repos = map[string]Repo{}
+	}
+	if cfg.ProjectDefaults == nil {
+		cfg.ProjectDefaults = map[string]string{}
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err

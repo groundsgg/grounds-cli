@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/groundsgg/grounds-cli/internal/api"
+	"github.com/groundsgg/grounds-cli/internal/config"
 )
 
 // Validates the --target flag's allow-list before grounds-push gets
@@ -121,6 +122,60 @@ func TestPushFlavorFlagIsForwardedToGradle(t *testing.T) {
 	}
 }
 
+func TestPushPassesDefaultProjectToGradle(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("test uses a POSIX shell gradle wrapper")
+	}
+	dir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(cwd); err != nil {
+			t.Fatalf("Chdir(%q) error = %v", cwd, err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q) error = %v", dir, err)
+	}
+	if err := os.WriteFile("grounds.yaml", []byte("name: plugin-config\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile(grounds.yaml) error = %v", err)
+	}
+	configDir := filepath.Join(dir, "config")
+	if err := config.Save(configDir, &config.Config{
+		APIURL:           "https://api.grounds.test",
+		DefaultTarget:    "dev",
+		Output:           "table",
+		Color:            "auto",
+		DefaultProjectID: "project-1",
+	}); err != nil {
+		t.Fatalf("Save config: %v", err)
+	}
+	t.Setenv("GROUNDS_CONFIG_DIR", configDir)
+	t.Setenv("GROUNDS_TOKEN", "test-token")
+	projectPath := filepath.Join(dir, "project.txt")
+	wrapper := "#!/bin/sh\nprintf '%s\\n' \"$GROUNDS_PROJECT\" > " + shellQuote(projectPath) + "\n"
+	if err := os.WriteFile("gradlew", []byte(wrapper), 0o755); err != nil {
+		t.Fatalf("WriteFile(gradlew) error = %v", err)
+	}
+
+	cmd := newPush()
+	cmd.SilenceUsage = true
+	cmd.SilenceErrors = true
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	raw, err := os.ReadFile(projectPath)
+	if err != nil {
+		t.Fatalf("ReadFile(project.txt) error = %v", err)
+	}
+	if got := strings.TrimSpace(string(raw)); got != "project-1" {
+		t.Fatalf("GROUNDS_PROJECT = %q, want project-1", got)
+	}
+}
+
 func TestPushMinestomFlavorBuildsDistributionAndUploads(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("test uses POSIX shell gradle wrapper")
@@ -179,6 +234,12 @@ repos:
 
 	var uploaded bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/projects" {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{{"id": "project-1", "slug": "main", "name": "Main", "role": "owner"}},
+			})
+			return
+		}
 		uploaded = true
 		if r.Method != http.MethodPost || r.URL.Path != "/v1/pushes" {
 			t.Errorf("request = %s %s, want POST /v1/pushes", r.Method, r.URL.Path)
@@ -285,10 +346,16 @@ modules:
 	}
 	t.Setenv("GROUNDS_CONFIG_DIR", workspaceDir)
 	t.Setenv("GROUNDS_TOKEN", "test-token")
-	writePushTestFile(t, filepath.Join(workspaceDir, "workspace.yaml"), "repos: [\n")
+	writePushTestFile(t, filepath.Join(workspaceDir, "workspace.yaml"), "repos: {}\n")
 
 	var uploaded bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/projects" {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"items": []map[string]any{{"id": "project-1", "slug": "main", "name": "Main", "role": "owner"}},
+			})
+			return
+		}
 		uploaded = true
 		if got := r.FormValue("flavor"); got != "" {
 			t.Errorf("form flavor = %q, want empty for top-level manifest", got)
@@ -438,6 +505,21 @@ func TestPushRootOwnsDeployFlagsAndSubcommands(t *testing.T) {
 
 	if sub, _, err := cmd.Find([]string{"push"}); err == nil && sub.Name() == "push" && sub != cmd {
 		t.Fatalf("unexpected nested push subcommand found")
+	}
+}
+
+func TestRetryLogStreamScopesProject(t *testing.T) {
+	client := api.New("https://api.example.test", nil)
+	client.ProjectID = "project-1"
+
+	stream := retryLogStream(client, "push 1", "token")
+
+	want := "https://api.example.test/v1/pushes/push%201/logs?projectId=project-1"
+	if stream.URL != want {
+		t.Fatalf("URL = %q, want %q", stream.URL, want)
+	}
+	if stream.Token != "token" {
+		t.Fatalf("Token = %q", stream.Token)
 	}
 }
 

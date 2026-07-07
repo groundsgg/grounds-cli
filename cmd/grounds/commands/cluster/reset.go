@@ -28,7 +28,7 @@ ref (--bundle, default main) with no engineer overrides. The workspace keeps
 its namespace and profile — only the contents are reset to zero.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			c, _, err := buildClient(ctx, cmd)
+			c, _, _, err := buildClient(ctx, cmd)
 			if err != nil {
 				return err
 			}
