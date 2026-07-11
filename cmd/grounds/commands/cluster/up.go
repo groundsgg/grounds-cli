@@ -84,12 +84,23 @@ changing profile, use ` + "`grounds cluster reset`" + `.`,
 			if profile != "minigame" && profile != "platform" {
 				return fmt.Errorf("invalid --profile %q: must be \"minigame\" or \"platform\" (omit --profile for the default platform-bundle)", profile)
 			}
-			s, err := c.ClusterUp(ctx, profile)
+			w := cmd.OutOrStdout()
+			if _, err := c.ClusterUp(ctx, profile); err != nil {
+				return err
+			}
+			// forge enqueues the provision and a worker runs it, so the row
+			// comes back `creating`. Poll to a terminal state instead of
+			// claiming "Active" the moment the request returns.
+			render.StatusLine(w, render.StatusOK, "Workspace",
+				"provisioning — this takes a few minutes…")
+			final, err := waitForBundle(ctx, c, w)
 			if err != nil {
 				return err
 			}
-			render.StatusLine(cmd.OutOrStdout(), render.StatusOK, "Workspace", "Active")
-			render.Status(cmd.OutOrStdout(), s)
+			render.Status(w, final)
+			if final.State == "failed" {
+				return fmt.Errorf("workspace provisioning failed")
+			}
 			return nil
 		},
 	}
