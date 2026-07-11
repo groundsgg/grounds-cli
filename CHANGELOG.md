@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/groundsgg/grounds-cli/compare/v0.7.0...v0.8.0) (2026-07-11)
+
+
+### Features
+
+* **status:** warn when the workspace lost its bundle components ([#74](https://github.com/groundsgg/grounds-cli/issues/74)) ([ea76365](https://github.com/groundsgg/grounds-cli/commit/ea7636533d7766a6892d644f016e5b252baebec3))
+
+
+### Bug Fixes
+
+* **cluster:** poll after `up --profile` instead of claiming Active ([#72](https://github.com/groundsgg/grounds-cli/issues/72)) ([b086e5e](https://github.com/groundsgg/grounds-cli/commit/b086e5e2a18309eb108b2e5161ef370781259be8))
+
 ## [0.7.0](https://github.com/groundsgg/grounds-cli/compare/v0.6.1...v0.7.0) (2026-07-07)
 
 
