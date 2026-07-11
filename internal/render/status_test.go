@@ -50,3 +50,40 @@ func TestStatus_PausedShowsWarning(t *testing.T) {
 		t.Errorf("no warning detail\n%s", out)
 	}
 }
+
+// An emptied vCluster used to render as a perfectly healthy "active, 0 ready"
+// workspace — nothing told the engineer their bundle base was gone.
+func TestStatus_BundleDegraded(t *testing.T) {
+	SetEnabled(true)
+	buf := &bytes.Buffer{}
+	Status(buf, &api.ClusterStatus{
+		Namespace:        "vcluster-x",
+		State:            "active",
+		Profile:          "platform-bundle",
+		DeploymentsReady: 0,
+		BundleHealth: &api.BundleHealth{
+			Status:  "degraded",
+			Missing: []string{"velocity", "minestom-lobby"},
+		},
+	})
+	out := buf.String()
+	for _, want := range []string{"degraded", "2 missing", "velocity", "minestom-lobby", "grounds cluster reset"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q\n%s", want, out)
+		}
+	}
+}
+
+func TestStatus_BundleOkIsQuiet(t *testing.T) {
+	SetEnabled(true)
+	buf := &bytes.Buffer{}
+	Status(buf, &api.ClusterStatus{
+		Namespace:    "vcluster-x",
+		State:        "active",
+		Profile:      "platform-bundle",
+		BundleHealth: &api.BundleHealth{Status: "ok"},
+	})
+	if out := buf.String(); strings.Contains(out, "degraded") || strings.Contains(out, "reset") {
+		t.Errorf("healthy workspace must not warn:\n%s", out)
+	}
+}
