@@ -27,7 +27,22 @@ type ClusterStatus struct {
 	// component breakdown and, when state=failed, the reconcile error.
 	BundleResult   *BundleResult   `json:"bundleResult"`
 	BundleProgress *BundleProgress `json:"bundleProgress"`
-	FailureReason  string          `json:"failureReason"`
+	// Drift check: forge compares the components it installed against what is
+	// actually running in the vCluster. Nil unless the workspace is an active
+	// platform-bundle one that has had a successful apply.
+	BundleHealth  *BundleHealth `json:"bundleHealth"`
+	FailureReason string        `json:"failureReason"`
+}
+
+// BundleHealth reports whether an `active` workspace still contains the bundle
+// components forge installed into it. A workspace can lose them without forge
+// noticing (provisioning is request-driven, never drift-correcting), which used
+// to surface as a healthy-looking workspace with no apps in it.
+type BundleHealth struct {
+	// "ok" | "degraded" | "unreachable"
+	Status string `json:"status"`
+	// Components from the last successful apply that are no longer running.
+	Missing []string `json:"missing"`
 }
 
 // BundleResult is the { succeeded, failed } breakdown of a bundle apply,
