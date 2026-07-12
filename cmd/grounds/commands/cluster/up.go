@@ -21,9 +21,9 @@ func newUp() *cobra.Command {
 	var bundleRef string
 	var overridePath string
 	cmd := &cobra.Command{
-		Use:     "up [--bundle=<ref>] [--override=<file>] [--profile=minigame|platform]",
+		Use:     "up [--bundle=<ref>] [--override=<file>] [--profile=platform]",
 		Short:   "Spawn or resume the workspace",
-		Example: "  grounds cluster up\n  grounds cluster up --bundle=0.6.4\n  grounds cluster up --profile=minigame",
+		Example: "  grounds cluster up\n  grounds cluster up --bundle=0.6.4\n  grounds cluster up --profile=platform",
 		Long: `Create the workspace if it doesn't exist, or resume it from a paused state.
 
 By default ` + "`up`" + ` provisions a **platform-bundle** workspace: a per-developer
@@ -36,8 +36,7 @@ optional override file, and helm-installs each component.
   grounds cluster up --bundle=0.6.4         # pin a bundle release
   grounds cluster up --override=./me.yaml   # local overrides (ref from file, else main)
 
-Legacy profiles (opt in with ` + "`--profile`" + `):
-  minigame  — namespace-scoped sandbox. Cheap, fast, isolated by RBAC.
+Legacy profile (opt in with ` + "`--profile`" + `):
   platform  — bare per-developer vCluster with the Grounds platform chart,
               without the bundle components.
 
@@ -52,11 +51,11 @@ changing profile, use ` + "`grounds cluster reset`" + `.`,
 			}
 
 			// platform-bundle is the default: a bare `up`, `--bundle`, or
-			// `--override` all drive bundle mode. Opt out to the legacy
-			// sandbox / vCluster profiles with --profile=minigame|platform.
+			// `--override` all drive bundle mode. Opt out to the bare
+			// vCluster profile with --profile=platform.
 			if profile == "" || profile == "platform-bundle" || bundleRef != "" || overridePath != "" {
 				if profile != "" && profile != "platform-bundle" {
-					return fmt.Errorf("--profile=%s can't be combined with --bundle/--override (those imply platform-bundle); drop --profile, or use --profile=minigame|platform for the legacy profiles", profile)
+					return fmt.Errorf("--profile=%s can't be combined with --bundle/--override (those imply platform-bundle); drop --profile, or use --profile=platform for a bare vCluster", profile)
 				}
 				body, err := loadBundleRequest(bundleRef, overridePath)
 				if err != nil {
@@ -81,8 +80,8 @@ changing profile, use ` + "`grounds cluster reset`" + `.`,
 				return nil
 			}
 
-			if profile != "minigame" && profile != "platform" {
-				return fmt.Errorf("invalid --profile %q: must be \"minigame\" or \"platform\" (omit --profile for the default platform-bundle)", profile)
+			if profile != "platform" {
+				return fmt.Errorf("invalid --profile %q: must be \"platform\" (omit --profile for the default platform-bundle)", profile)
 			}
 			w := cmd.OutOrStdout()
 			if _, err := c.ClusterUp(ctx, profile); err != nil {
@@ -104,7 +103,7 @@ changing profile, use ` + "`grounds cluster reset`" + `.`,
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&profile, "profile", "", "legacy profile: minigame (sandbox) or platform (bare vCluster); default is platform-bundle")
+	cmd.Flags().StringVar(&profile, "profile", "", "legacy profile: platform (bare vCluster); default is platform-bundle")
 	cmd.Flags().StringVar(&bundleRef, "bundle", "", "PlatformBundle ref (e.g. 0.6.4, main); default main")
 	cmd.Flags().StringVar(&overridePath, "override", "", "path to an Engineer-Override-File (YAML); implies platform-bundle profile")
 	return cmd
