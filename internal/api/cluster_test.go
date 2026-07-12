@@ -14,9 +14,9 @@ func TestGetCluster(t *testing.T) {
 			t.Fatalf("got %s %s", r.Method, r.URL.Path)
 		}
 		json.NewEncoder(w).Encode(map[string]any{
-			"namespace":        "user-test",
+			"namespace":        "vcluster-test",
 			"state":            "active",
-			"profile":          "minigame",
+			"profile":          "platform-bundle",
 			"deploymentsReady": 2,
 			"bundleProgress": map[string]any{
 				"bundleRef":            "main",
@@ -39,7 +39,7 @@ func TestGetCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if s.Namespace != "user-test" || s.State != "active" || s.DeploymentsReady != 2 {
+	if s.Namespace != "vcluster-test" || s.State != "active" || s.DeploymentsReady != 2 {
 		t.Errorf("status = %+v", s)
 	}
 	if s.BundleProgress == nil {

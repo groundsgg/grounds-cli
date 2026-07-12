@@ -16,7 +16,7 @@ func TestStatus_Active(t *testing.T) {
 	Status(buf, &api.ClusterStatus{
 		Namespace:        "user-x",
 		State:            "active",
-		Profile:          "minigame",
+		Profile:          "platform-bundle",
 		AutoPauseAt:      &in,
 		Quota:            map[string]string{"cpu": "4", "memory": "8Gi", "storage": "20Gi"},
 		DeploymentsReady: 1,
@@ -36,7 +36,7 @@ func TestStatus_PausedShowsWarning(t *testing.T) {
 	Status(buf, &api.ClusterStatus{
 		Namespace:    "user-x",
 		State:        "paused",
-		Profile:      "minigame",
+		Profile:      "platform-bundle",
 		AutoDeleteAt: &in,
 	})
 	out := buf.String()
