@@ -20,7 +20,7 @@ jobs:
       - run: go test ./... -race -cover
 
   build-snapshot:
-    runs-on: arc-linux
+    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
     needs: test
     steps:
       - uses: actions/checkout@v6
