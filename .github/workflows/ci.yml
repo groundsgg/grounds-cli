@@ -20,7 +20,7 @@ jobs:
       - run: go test ./... -race -cover
 
   build-snapshot:
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-24.04-arm
     needs: test
     steps:
       - uses: actions/checkout@v6
