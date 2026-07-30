@@ -17,7 +17,7 @@ permissions:
 jobs:
   goreleaser:
     name: Publish packages
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -50,7 +50,7 @@ jobs:
   glitchtip-release:
     name: Mark GlitchTip release
     needs: goreleaser
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
