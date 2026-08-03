@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0](https://github.com/groundsgg/grounds-cli/compare/v0.8.0...v1.0.0) (2026-08-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cluster:** drop --profile=minigame ([#77](https://github.com/groundsgg/grounds-cli/issues/77))
+
+### Features
+
+* **cluster:** drop --profile=minigame ([#77](https://github.com/groundsgg/grounds-cli/issues/77)) ([477f65c](https://github.com/groundsgg/grounds-cli/commit/477f65c2dce3630d1592820626f192014dac5db8))
+* restore managed bundle components ([#80](https://github.com/groundsgg/grounds-cli/issues/80)) ([7516c63](https://github.com/groundsgg/grounds-cli/commit/7516c63e645df8c1a2586db69478c49def6df51f))
+
 ## [0.8.0](https://github.com/groundsgg/grounds-cli/compare/v0.7.0...v0.8.0) (2026-07-11)
 
 
