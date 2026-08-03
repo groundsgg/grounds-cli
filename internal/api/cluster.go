@@ -135,6 +135,24 @@ type BundleUpResult struct {
 	} `json:"components"`
 }
 
+// BundleComponentRestoreResult mirrors the asynchronous response from
+// POST /v1/cluster/bundle/components/:name/restore.
+type BundleComponentRestoreResult struct {
+	State string `json:"state"`
+	Poll  string `json:"poll"`
+}
+
+// RestoreBundleComponent removes a temporary push replacement and reconciles
+// the named component back to the image pinned by the active bundle reference.
+func (c *Client) RestoreBundleComponent(ctx context.Context, component string) (*BundleComponentRestoreResult, error) {
+	out := &BundleComponentRestoreResult{}
+	path := "/v1/cluster/bundle/components/" + url.PathEscape(component) + "/restore"
+	if err := c.doRequest(ctx, http.MethodPost, path, nil, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ClusterUpBundle drives a `platform-bundle` profile DevCluster: forge
 // resolves the bundle ref, applies the engineer's overrides, and
 // best-effort helm-installs each component into the vCluster. The

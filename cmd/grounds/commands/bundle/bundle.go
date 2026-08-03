@@ -15,7 +15,7 @@ func NewBundleCommand() *cobra.Command {
 		Short:   "Inspect available platform-test bundles",
 		Example: "  grounds bundle list\n  grounds bundle show main\n  grounds bundle show 0.4.0",
 	}
-	cmd.AddCommand(newList(), newShow())
+	cmd.AddCommand(newList(), newShow(), newRestore())
 	return cmd
 }
 
