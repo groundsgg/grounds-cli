@@ -95,6 +95,28 @@ func TestClusterReset_EmptyBundleOmitted(t *testing.T) {
 	}
 }
 
+func TestRestoreBundleComponent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/cluster/bundle/components/service-config/restore" {
+			t.Fatalf("got %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.URL.Query().Get("projectId"); got != "project-1" {
+			t.Fatalf("projectId = %q", got)
+		}
+		w.WriteHeader(http.StatusAccepted)
+		json.NewEncoder(w).Encode(map[string]string{"state": "creating", "poll": "/v1/cluster"})
+	}))
+	defer srv.Close()
+	c := New(srv.URL, nil).WithProject("project-1")
+	result, err := c.RestoreBundleComponent(context.Background(), "service-config")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if result.State != "creating" || result.Poll != "/v1/cluster" {
+		t.Errorf("result = %+v", result)
+	}
+}
+
 func TestClusterDelete_Header(t *testing.T) {
 	var got string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
